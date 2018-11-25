@@ -21,7 +21,8 @@ int main()
   //ifstream inFile("../tt_had_test_one.lhe");
   //ifstream inFile("../tt_had_test.lhe");
   //ifstream inFile("../tt_hadronic.lhe");
-  ifstream inFile("/afs/cern.ch/work/s/sosen/ChongbinTop/lhe/tt_hadronic.lhe");
+  //ifstream inFile("/afs/cern.ch/work/s/sosen/ChongbinTop/lhe/tt_hadronic.lhe");
+  ifstream inFile("/afs/cern.ch/work/s/sosen/ChongbinTop/lhe/bbjjj.lhe");
   //ifstream inFile("../bbjjj_short.lhe");
 
   string line;
@@ -29,7 +30,6 @@ int main()
   bool event_meta = false; //event block readability switched off to skip the first event block line
   std::vector <TLorentzVector> specbjets;
   std::vector <TLorentzVector> specnonbjets;
-  //vector <TLorentzVector> evt;
   //mass
   TH1F htwmass("htwmass", "Mass of tw Buckets",150,0.0001,300); 
   TH1F htminmass("htminmass", "Mass of t- Buckets",150,0.0001,300); 
@@ -70,12 +70,6 @@ int main()
     {
       event_flag = false; //switch off the event block
       event_meta = false; //switch off the event block readability
-      //cout << line << "\t" << event_flag << endl;
-      //finalstate::event ev1(evt);
-      //cout << ">> " << ev1.nonbjet.size() << endl;
-/*      for (int i = 0; i < evt.size(); ++i) {
-        cout << evt[i].getPID() << "\t" << evt[i].getpX() << endl;
-      }*/
       //discard events with less than two b jets
       if (specbjets.size() == 2)
       {
@@ -97,93 +91,9 @@ int main()
 	for(auto v: m_buckets->XPt) {hXPt.Fill(v);} 
 	for(auto v: m_buckets->Xeta) {hXeta.Fill(v);} 
       }
-      /*{
-        //bucket algo PASS1 (to find tw buckets)//
-        vector <bucketAlgo::bucket> B;
-        double bucketP1massMax = 200; //GeV
-        double bucketP1massMin = 155; //GeV
-        double firstP1Bucketwt = 100;
-        B = bucketAlgo::doublebucket(ev1, bucketP1massMax, bucketP1massMin, "tw", firstP1Bucketwt);
-        //cout << "B1: " << B[0].getBucketLabel() << "\tB2: " << B[1].getBucketLabel() << endl;
-        //pass2 find t- buckets//
-        vector <bucketAlgo::bucket> tmincand; //fill tmin candidates
-        int telseindex; //tw or t0 bucket
-        for (int i = 0; i < B.size(); ++i)
-        {
-          if (B[i].getBucketMass() > -1) {hmW.Fill(B[i].WcandMnum());}
-          if (B[i].getBucketMass() > -1) {hmBucketPrim.Fill(B[i].getBucketMass());}
-          if (B[i].getBucketMass() > -1) {hmratio.Fill(B[i].WcandRatio());}
-          if (B[i].getBucketLabel() == "t-") {tmincand.push_back(B[i]);}
-          else 
-          {
-            telseindex = i;
-          } 
-        }
-        //redo both buckets for t-
-        double bucketP2massMax = 155; //GeV
-        double bucketP2massMin = 75; //GeV
-        double firstP2Bucketwt = 1;
-        
-        if (tmincand.size() == 2)
-        {
-          B = bucketAlgo::doublebucket(ev1, bucketP2massMax, bucketP2massMin, "t-", firstP2Bucketwt);
-          //cout << "event: " << eventcounter << endl;
-        }
-        else if (tmincand.size() == 1)
-        {
-          B[1-telseindex] = bucketAlgo::singlebucket(ev1, B[telseindex], bucketP2massMax, bucketP2massMin);
-        }
-        for (int i = 0; i < B.size(); ++i)
-        {
-          if (B[i].getBucketLabel() == "tw") 
-          {
-              if (B[i].getBucketMass() > -1) {
-        	  htwmass.Fill(B[i].getBucketMass());
-        	  htwPt.Fill(B[i].getBucketPt());
-        	  htweta.Fill(B[i].getBucketEta()); }
-        	  ++twcounter;
-          }
-          else if (B[i].getBucketLabel() == "t-")
-          {       
-              if (B[i].getBucketMass() > -1) {
-      	          htminmass.Fill(B[i].getBucketMass());
-        	  htminPt.Fill(B[i].getBucketPt());
-        	  htmineta.Fill(B[i].getBucketEta());}
-                  ++tmincounter;
-          }
-          else 
-          {
-		  //cout << "LL: " << B[i].getBucketLabel() << "\tmass: " << B[i].getBucketMass() << endl;
-        	  if (B[i].getBucketMass() > -1) {
-		  ht0mass.Fill(B[i].getBucketMass());
-        	  ht0Pt.Fill(B[i].getBucketPt());
-        	  ht0eta.Fill(B[i].getBucketEta());}
-		  if (B[i].getBucketEta() == 0) 
-		  {
-		          //vector<int> plll = B[i].getPIDlist();
-		          vector<int> plll = B[i].getOrderlist();
-	          }
-                  ++t0counter;
-          }
-        }
-
-          vector <finalstate::particle> Xtra = bucketAlgo::extra(ev1.EVT, B); // extra bucket
-          //cout << "extrasize: "  << Xtra.size() << "\tBsize: " << B.size() << endl;
-	  
-
-          for (int nn=0; nn < Xtra.size(); ++nn)
-          {
-            ++tXcounter;
-	    hXmass.Fill(Xtra[nn].getM());
-            hXPt.Fill(Xtra[nn].getPt());
-            hXeta.Fill(Xtra[nn].getEta());
-          }
-          
-        //
-      }*/
       specbjets.clear();
       specnonbjets.clear();
-      //evt.clear(); //insert event operations before clearing the vector 
+      //insert event operations before clearing the vector 
     }
     else{
       if (event_flag) 
@@ -221,9 +131,6 @@ int main()
 	      specnonbjets.push_back(temnonb);
 	    }
 
-    
-            //cout << p.getPID() << "\t status: " << p.getStatus() << "\t" << p.getpX() << endl;
-            //evt.push_back(p);
           }
         }
         else
@@ -343,31 +250,3 @@ int main()
   return 0;
   
 }
-
-/*{
-    TLorentzVector b1, b2, nb1, nb2, nb3, nb4, nb5, nb6, nb7;
-    b1.SetPxPyPzE(239.001, -44.1249, -150.152, 288.056);
-    b2.SetPxPyPzE(158.135, 29.5485, -260.97, 307.221);
-    std::vector<TLorentzVector> specbjets = {b1, b2};
-
-    nb1.SetPxPyPzE(-61.5849 , 52.878     , -309.991   , 320.669);
-    nb2.SetPxPyPzE(-67.7585 , 21.3895    , -93.6167   , 117.823);
-    nb3.SetPxPyPzE(-60.8536 , -34.9778   , -63.2891   , 95.2948);
-    nb4.SetPxPyPzE(46.7464  , -51.02     , 38.2181    , 79.4786);
-    nb5.SetPxPyPzE(-41.4773 , -47.7591   , -132.374   , 147.095);
-    nb6.SetPxPyPzE(42.4618  , -25.8559   , -51.3354   , 71.7133);
-    nb7.SetPxPyPzE(10.5252  , 33.8559    , -44.5788   , 57.5742);
-    std::vector<TLorentzVector> specnonbjets = {nb1, nb2, nb3, nb4, nb5, nb6, nb7};
-
-    BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjets);
-    std::vector<bucketAlgo::bucket> bucklist = m_buckets->Blist;
-    std::cout << "buclet list size: " << bucklist.size() << std::endl;
-    std::cout << "init bucket mass: " << bucklist[0].getBucketMass() << "\t" << bucklist[1].getBucketMass() << std::endl;
-    std::cout << "init bucket label: " << bucklist[0].getBucketLabel() << "\t" << bucklist[1].getBucketLabel() << std::endl;
-    std::cout << "init bucket pT: " << bucklist[0].getBucketPt() << "\t" << bucklist[1].getBucketPt() << std::endl;
-    std::cout << "init bucket eta: " << bucklist[0].getBucketEta() << "\t" << bucklist[1].getBucketEta() << std::endl;
-    std::cout << "init bucket WcandMnum(): " << bucklist[0].WcandMnum() << "\t" << bucklist[1].WcandMnum() << std::endl;
-  return 0;
-}*/
-
-
