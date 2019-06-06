@@ -10,6 +10,9 @@
 #include "TFile.h"
 #include "TCanvas.h"
 #include "TH1.h"
+#include "TH2.h"
+#include "TGraph.h"
+#include "TMultiGraph.h"
 #include "math.h"
 #include "TLorentzVector.h"
 #include "TLine.h"
@@ -20,10 +23,12 @@
 #include <map>
 #include "TLegend.h"
 
+
 using namespace std;
 
 class BucketofTops; //forward declare
 class topquark; //forward declare
+
 TRandom *r = new TRandom();
 
 TLorentzVector smear(TLorentzVector v)
@@ -361,16 +366,29 @@ int main()
 
   //wrong buckets
   //
-  TH1F hmBucketPrim0W1("hmBucketPrimitiveB1W1", "Mass of the B1 Bucket before Recalculation",75,100,250); 
-  TH1F hmBucketPrim0W2("hmBucketPrimitiveB1W2", "Mass of the B1 Bucket before Recalculation",75,100,250); 
-  TH1F hmBucketPrim1W1("hmBucketPrimitiveB2W1", "Mass of the B2 Bucket before Recalculation",75,100,250); 
-  TH1F hmBucketPrim1W2("hmBucketPrimitiveB2W2", "Mass of the B2 Bucket before Recalculation",75,100,250); 
+  TH1F hmBucketPrim0Wcontamination("hmBucketPrimitiveB1W1", "Mass of the B1 Bucket before Recalculation",75,100,250); 
+  TH1F hmBucketPrim0Wsubset("hmBucketPrimitiveB1W2", "Mass of the B1 Bucket before Recalculation",75,100,250); 
+  TH1F hmBucketPrim1Wcontamination("hmBucketPrimitiveB2W1", "Mass of the B2 Bucket before Recalculation",75,100,250); 
+  TH1F hmBucketPrim1Wsubset("hmBucketPrimitiveB2W2", "Mass of the B2 Bucket before Recalculation",75,100,250); 
 
   //njets
-  TH1F hnonbjetB1W1("hnonbjetB1W1", "non b jets in B1", 16, -0.5, 15.5);
-  TH1F hnonbjetB1W2("hnonbjetB1W2", "non b jets in B1", 16, -0.5, 15.5);
-  TH1F hnonbjetB2W1("hnonbjetB2W1", "non b jets in B2", 16, -0.5, 15.5);
-  TH1F hnonbjetB2W2("hnonbjetB2W2", "non b jets in B2", 16, -0.5, 15.5);
+  TH1F hnonbjetB1Wcontamination("hnonbjetB1Wcontamination", "non b jets in B1", 16, -0.5, 15.5);
+  TH1F hnonbjetB1Wsubset("hnonbjetB1Wsubset", "non b jets in B1", 16, -0.5, 15.5);
+  TH1F hnonbjetB2Wcontamination("hnonbjetB2Wcontamination", "non b jets in B2", 16, -0.5, 15.5);
+  TH1F hnonbjetB2Wsubset("hnonbjetB2Wsubset", "non b jets in B2", 16, -0.5, 15.5);
+
+  //for all bucket pairs scatter plot
+  std::vector<double> vallb1; //should be one point per event
+  std::vector<double> vallb2; //should be one point per event
+  std::vector<double> vtrueSolb1; //should be one point per event
+  std::vector<double> vNonMatchb1; //should be one point per event
+  std::vector<double> vElseb1;
+  std::vector<double> vtrueSolb2; //should be one point per event
+  std::vector<double> vNonMatchb2; //should be one point per event
+  std::vector<double> vElseb2;
+  std::vector<double> vMatchb1;  //should be one point per event
+  std::vector<double> vMatchb2;  //should be one point per event
+
 
 
 //  
@@ -384,7 +402,8 @@ int main()
     if (line.find("<event>") != string::npos) 
     {
       event_flag = true;
-      //if (eventcounter == 1000) {break;}
+      if (eventcounter == 1000) {break;}
+      //if (eventcounter == 2) {break;}
       cout << "event: " << eventcounter << endl;
       eventcounter++; 
       //cout << line << "\t" << event_flag << endl;
@@ -402,6 +421,61 @@ int main()
         }
         BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjets);
         std::vector<bucketAlgo::bucket>& bucklist = *m_buckets->returnbucketlistptr();
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+	bucketAlgo::bucketpairs allprebpairs = m_buckets->allbucketpairstw;
+	std::map< int , std::vector<bucketAlgo::bucket> > prebpairMap = allprebpairs.Bpairs;
+	int AlgSol = allprebpairs.solutionIndex;
+	for (std::map< int , std::vector<bucketAlgo::bucket> >::iterator it=prebpairMap.begin(); it !=prebpairMap.end(); ++it)
+	{
+          std::vector<bucketAlgo::bucket> preblist = it->second;
+          double d1 = preblist[0].twdelta;
+	  //twOptMetric();
+	  TLorentzVector preb1bjet = preblist[0].BJET;
+	  vector<TLorentzVector> preb1nonbjets = preblist[0].nonBJETS;
+          int b1truthmatchFlag = bucketmatcher(lines, preb1bjet, preb1nonbjets, topDict);
+          double d2 = preblist[1].twdelta;
+	  //twOptMetric();
+	  TLorentzVector preb2bjet = preblist[1].BJET;
+	  vector<TLorentzVector> preb2nonbjets = preblist[1].nonBJETS;
+          int b2truthmatchFlag = bucketmatcher(lines, preb2bjet, preb2nonbjets, topDict);
+          //cout << "index: " << it->first << endl;
+	  //cout << "d1 main: " << d1 << "\td2 main: " << d2 << endl;
+	  vallb1.push_back(pow(d1, 0.5));
+	  vallb2.push_back(pow(d2, 0.5));
+          if ((b1truthmatchFlag==0) && (b2truthmatchFlag==0))
+          {
+	    //cout << "index at truth: " << it->first << endl;
+            vtrueSolb1.push_back(pow(d1, 0.5));
+            vtrueSolb2.push_back(pow(d2, 0.5));
+          }
+
+
+          if (it->first == AlgSol)
+          {
+	    //cout << "index at algo sol: " << it->first << endl;
+            if ((b1truthmatchFlag==0) && (b2truthmatchFlag==0))
+            {
+  	    //cout << "index at truth: " << it->first << endl;
+              vMatchb1.push_back(pow(d1, 0.5));
+              vMatchb2.push_back(pow(d2, 0.5));
+            }
+	    else
+            {
+              vNonMatchb1.push_back(pow(d1, 0.5));
+              vNonMatchb2.push_back(pow(d2, 0.5));
+            }
+          }
+          if (it->first != AlgSol)
+          {
+            vElseb1.push_back(pow(d1, 0.5));
+            vElseb2.push_back(pow(d2, 0.5));
+          }
+	}
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	//prebuckets are buckets before labels are added to them
 	TLorentzVector prebucket1bjet = m_buckets->B1bjet;
 	vector<TLorentzVector> prebucket1nonbjets = m_buckets->B1nonbjets;
@@ -418,8 +492,8 @@ int main()
         std::vector<float> m_mBucketPrim = m_buckets->mBucketPrim;
         hmBucketPrim0.Fill(m_mBucketPrim.at(0));
         if (B1truthmatchFlag == 0) {hmBucketPrim0C.Fill(m_mBucketPrim.at(0));} //truthmatched
-	else if (B1truthmatchFlag == 1) {hmBucketPrim0W1.Fill(m_mBucketPrim.at(0));} //subset
-	else {hmBucketPrim0W2.Fill(m_mBucketPrim.at(0));} //wrong combination
+	else if (B1truthmatchFlag == 1) {hmBucketPrim0Wcontamination.Fill(m_mBucketPrim.at(0));} //contamination
+	else {hmBucketPrim0Wsubset.Fill(m_mBucketPrim.at(0));} //subset
 	/*cout << "B1 mass: " << m_mBucketPrim.at(0) <<endl;
         for(auto v: bucklist[0].nonBJETS) {
 	  cout << "B1 nonb-jet:" << "\tpx: " << v.Px() << "\tpy: " << v.Py() << "\tpz: " << v.Pz() << "\tE: " << v.E() << endl;
@@ -429,9 +503,9 @@ int main()
         */
 
         hmBucketPrim1.Fill(m_mBucketPrim.at(1)); 
-        if (B2truthmatchFlag == 0) {hmBucketPrim1C.Fill(m_mBucketPrim.at(1));} //truthmatched
-	else if (B2truthmatchFlag == 1) {hmBucketPrim1W1.Fill(m_mBucketPrim.at(1));} //subset
-	else {hmBucketPrim1W2.Fill(m_mBucketPrim.at(1));} //wrong combination
+        if (B2truthmatchFlag == 0) {hmBucketPrim1C.Fill(m_mBucketPrim.at(1));} //
+	else if (B2truthmatchFlag == 1) {hmBucketPrim1Wcontamination.Fill(m_mBucketPrim.at(1));} //contamination
+	else {hmBucketPrim1Wsubset.Fill(m_mBucketPrim.at(1));} //subset
 	/*cout << "B2 mass: " << m_mBucketPrim.at(1) <<endl;
         for(auto v: bucklist[1].nonBJETS) {
 	  cout << "B1 nonb-jet:" << "\tpx: " << v.Px() << "\tpy: " << v.Py() << "\tpz: " << v.Pz() << "\tE: " << v.E() << endl;
@@ -456,12 +530,12 @@ int main()
 	hnonbjetinit.Fill(m_buckets->nonbinitcount); 
 	hnonbjetB1.Fill(m_buckets->nonb1count); 
         if (B1truthmatchFlag == 0) {hnonbjetB1C.Fill(m_buckets->nonb1count);} //truthmatched
-	else if (B1truthmatchFlag == 1) {hnonbjetB1W1.Fill(m_buckets->nonb1count);} //subset
-	else {hnonbjetB1W2.Fill(m_buckets->nonb1count);} //contamination
+	else if (B1truthmatchFlag == 1) {hnonbjetB1Wcontamination.Fill(m_buckets->nonb1count);} //contamination
+	else {hnonbjetB1Wsubset.Fill(m_buckets->nonb1count);} //subset
 	hnonbjetB2.Fill(m_buckets->nonb2count); 
         if (B2truthmatchFlag == 0) {hnonbjetB2C.Fill(m_buckets->nonb2count);} //truthmatched
-	else if (B2truthmatchFlag == 1) {hnonbjetB2W1.Fill(m_buckets->nonb2count);} //subset
-	else {hnonbjetB2W2.Fill(m_buckets->nonb2count);} //contamination
+	else if (B2truthmatchFlag == 1) {hnonbjetB2Wcontamination.Fill(m_buckets->nonb2count);} //contamination
+	else {hnonbjetB2Wsubset.Fill(m_buckets->nonb2count);} //subset
 	hnonbjetBISR.Fill(m_buckets->nonbISRcount); 
       }
       specbjets.clear();
@@ -499,15 +573,15 @@ int main()
 	    {
 	      TLorentzVector temb;
 	      temb.SetPxPyPzE(px, py, pz, E);
-	      specbjets.push_back(temb);
-	      //specbjets.push_back(smear(temb));
+	      //specbjets.push_back(temb);
+	      specbjets.push_back(smear(temb));
 	    }
 	    else
             {
 	      TLorentzVector temnonb;
 	      temnonb.SetPxPyPzE(px, py, pz, E);
-	      specnonbjets.push_back(temnonb);
-	      //specnonbjets.push_back(smear(temnonb));
+	      //specnonbjets.push_back(temnonb);
+	      specnonbjets.push_back(smear(temnonb));
 	    }
           }
 	  else if (abs(pid) == 24){Wcount++;}
@@ -653,17 +727,17 @@ int main()
   auto legM0 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legM0.SetFillColor(0);
   legM0.SetLineColor(0);
-  hmBucketPrim0W1.GetXaxis()->SetTitle("Mass (GeV)");
-  hmBucketPrim0W1.SetLineColor(2);
-  hmBucketPrim0W1.Write();
-  hmBucketPrim0W1.SetMaximum(max(max(hmBucketPrim0W1.GetMaximum(), hmBucketPrim0W2.GetMaximum()), hmBucketPrim0C.GetMaximum())*1.1);
-  hmBucketPrim0W1.Draw();
-  legM0.AddEntry(&hmBucketPrim0W1, Form("subset (%.f)", hmBucketPrim0W1.Integral()), "l");
-  hmBucketPrim0W2.GetXaxis()->SetTitle("Mass (GeV)");
-  hmBucketPrim0W2.SetLineColor(3);
-  hmBucketPrim0W2.Write();
-  hmBucketPrim0W2.Draw("same");
-  legM0.AddEntry(&hmBucketPrim0W2, Form("contamination (%.f)", hmBucketPrim0W2.Integral()), "l");
+  hmBucketPrim0Wcontamination.GetXaxis()->SetTitle("Mass (GeV)");
+  hmBucketPrim0Wcontamination.SetLineColor(2);
+  hmBucketPrim0Wcontamination.Write();
+  hmBucketPrim0Wcontamination.SetMaximum(max(max(hmBucketPrim0Wcontamination.GetMaximum(), hmBucketPrim0Wsubset.GetMaximum()), hmBucketPrim0C.GetMaximum())*1.1);
+  hmBucketPrim0Wcontamination.Draw();
+  legM0.AddEntry(&hmBucketPrim0Wcontamination, Form("contamination (%.f)", hmBucketPrim0Wcontamination.Integral()), "l");
+  hmBucketPrim0Wsubset.GetXaxis()->SetTitle("Mass (GeV)");
+  hmBucketPrim0Wsubset.SetLineColor(3);
+  hmBucketPrim0Wsubset.Write();
+  hmBucketPrim0Wsubset.Draw("same");
+  legM0.AddEntry(&hmBucketPrim0Wsubset, Form("subset (%.f)", hmBucketPrim0Wsubset.Integral()), "l");
   hmBucketPrim0C.GetXaxis()->SetTitle("Mass (GeV)");
   hmBucketPrim0C.SetLineColor(1);
   hmBucketPrim0C.Write();
@@ -685,17 +759,17 @@ int main()
   auto legM1 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legM1.SetFillColor(0);
   legM1.SetLineColor(0);
-  hmBucketPrim1W1.GetXaxis()->SetTitle("Mass (GeV)");
-  hmBucketPrim1W1.SetLineColor(2);
-  hmBucketPrim1W1.Write();
-  hmBucketPrim1W1.SetMaximum(max(max(hmBucketPrim1W1.GetMaximum(), hmBucketPrim1W2.GetMaximum()), hmBucketPrim1C.GetMaximum())*1.1);
-  hmBucketPrim1W1.Draw();
-  legM1.AddEntry(&hmBucketPrim1W1, Form("subset (%.f)", hmBucketPrim1W1.Integral()), "l");
-  hmBucketPrim1W2.GetXaxis()->SetTitle("Mass (GeV)");
-  hmBucketPrim1W2.SetLineColor(3);
-  hmBucketPrim1W2.Write();
-  hmBucketPrim1W2.Draw("same");
-  legM1.AddEntry(&hmBucketPrim1W2, Form("contamination (%.f)", hmBucketPrim1W2.Integral()), "l");
+  hmBucketPrim1Wcontamination.GetXaxis()->SetTitle("Mass (GeV)");
+  hmBucketPrim1Wcontamination.SetLineColor(2);
+  hmBucketPrim1Wcontamination.Write();
+  hmBucketPrim1Wcontamination.SetMaximum(max(max(hmBucketPrim1Wcontamination.GetMaximum(), hmBucketPrim1Wsubset.GetMaximum()), hmBucketPrim1C.GetMaximum())*1.1);
+  hmBucketPrim1Wcontamination.Draw();
+  legM1.AddEntry(&hmBucketPrim1Wcontamination, Form("contamination (%.f)", hmBucketPrim1Wcontamination.Integral()), "l");
+  hmBucketPrim1Wsubset.GetXaxis()->SetTitle("Mass (GeV)");
+  hmBucketPrim1Wsubset.SetLineColor(3);
+  hmBucketPrim1Wsubset.Write();
+  hmBucketPrim1Wsubset.Draw("same");
+  legM1.AddEntry(&hmBucketPrim1Wsubset, Form("subset (%.f)", hmBucketPrim1Wsubset.Integral()), "l");
   hmBucketPrim1C.GetXaxis()->SetTitle("Mass (GeV)");
   hmBucketPrim1C.SetLineColor(1);
   hmBucketPrim1C.Write();
@@ -726,17 +800,17 @@ int main()
   auto legnb1 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legnb1.SetFillColor(0);
   legnb1.SetLineColor(0);
-  hnonbjetB1W1.GetXaxis()->SetTitle("nonb jets per event in B1");
-  hnonbjetB1W1.SetLineColor(2);
-  hnonbjetB1W1.Write();
-  hnonbjetB1W1.SetMaximum(max(max(hnonbjetB1W1.GetMaximum(), hnonbjetB1W2.GetMaximum()), hnonbjetB1C.GetMaximum())*1.1);
-  hnonbjetB1W1.Draw();
-  legnb1.AddEntry(&hnonbjetB1W1, Form("subset (%.f)", hnonbjetB1W1.Integral()), "l");
-  hnonbjetB1W2.GetXaxis()->SetTitle("nonb jets per event in B1");
-  hnonbjetB1W2.SetLineColor(3);
-  hnonbjetB1W2.Write();
-  hnonbjetB1W2.Draw("same");
-  legnb1.AddEntry(&hnonbjetB1W2, Form("contamination (%.f)", hnonbjetB1W2.Integral()), "l");
+  hnonbjetB1Wcontamination.GetXaxis()->SetTitle("nonb jets per event in B1");
+  hnonbjetB1Wcontamination.SetLineColor(2);
+  hnonbjetB1Wcontamination.Write();
+  hnonbjetB1Wcontamination.SetMaximum(max(max(hnonbjetB1Wcontamination.GetMaximum(), hnonbjetB1Wsubset.GetMaximum()), hnonbjetB1C.GetMaximum())*1.1);
+  hnonbjetB1Wcontamination.Draw();
+  legnb1.AddEntry(&hnonbjetB1Wcontamination, Form("contamination (%.f)", hnonbjetB1Wcontamination.Integral()), "l");
+  hnonbjetB1Wsubset.GetXaxis()->SetTitle("nonb jets per event in B1");
+  hnonbjetB1Wsubset.SetLineColor(3);
+  hnonbjetB1Wsubset.Write();
+  hnonbjetB1Wsubset.Draw("same");
+  legnb1.AddEntry(&hnonbjetB1Wsubset, Form("subset (%.f)", hnonbjetB1Wsubset.Integral()), "l");
   hnonbjetB1C.GetXaxis()->SetTitle("nonb jets per event in B1");
   hnonbjetB1C.SetLineColor(1);
   hnonbjetB1C.Write();
@@ -755,17 +829,17 @@ int main()
   auto legnb2 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legnb2.SetFillColor(0);
   legnb2.SetLineColor(0);
-  hnonbjetB2W1.GetXaxis()->SetTitle("nonb jets per event in B2");
-  hnonbjetB2W1.SetLineColor(2);
-  hnonbjetB2W1.Write();
-  hnonbjetB2W1.SetMaximum(max(max(hnonbjetB2W1.GetMaximum(), hnonbjetB2W2.GetMaximum()), hnonbjetB2C.GetMaximum())*1.1);
-  hnonbjetB2W1.Draw();
-  legnb2.AddEntry(&hnonbjetB2W1, Form("subset (%.f)", hnonbjetB2W1.Integral()), "l");
-  hnonbjetB2W2.GetXaxis()->SetTitle("nonb jets per event in B2");
-  hnonbjetB2W2.SetLineColor(3);
-  hnonbjetB2W2.Write();
-  hnonbjetB2W2.Draw("same");
-  legnb2.AddEntry(&hnonbjetB2W2, Form("contamination (%.f)", hnonbjetB2W2.Integral()), "l");
+  hnonbjetB2Wcontamination.GetXaxis()->SetTitle("nonb jets per event in B2");
+  hnonbjetB2Wcontamination.SetLineColor(2);
+  hnonbjetB2Wcontamination.Write();
+  hnonbjetB2Wcontamination.SetMaximum(max(max(hnonbjetB2Wcontamination.GetMaximum(), hnonbjetB2Wsubset.GetMaximum()), hnonbjetB2C.GetMaximum())*1.1);
+  hnonbjetB2Wcontamination.Draw();
+  legnb2.AddEntry(&hnonbjetB2Wcontamination, Form("contamination (%.f)", hnonbjetB2Wcontamination.Integral()), "l");
+  hnonbjetB2Wsubset.GetXaxis()->SetTitle("nonb jets per event in B2");
+  hnonbjetB2Wsubset.SetLineColor(3);
+  hnonbjetB2Wsubset.Write();
+  hnonbjetB2Wsubset.Draw("same");
+  legnb2.AddEntry(&hnonbjetB2Wsubset, Form("subset (%.f)", hnonbjetB2Wsubset.Integral()), "l");
   hnonbjetB2C.GetXaxis()->SetTitle("nonb jets per event in B2");
   hnonbjetB2C.SetLineColor(1);
   hnonbjetB2C.Write();
@@ -780,6 +854,171 @@ int main()
   hnonbjetBISR.Draw();
   c.Update();
   c.Print("cpp_reconstructed_nonbjetcountBISR.eps");
+  c.Clear();
+
+  //delta scatter plot for all bucket pairs
+  auto gtrueSol = new TGraph(vtrueSolb1.size(), &vtrueSolb1[0], &vtrueSolb2[0]);
+  auto gNonMatch = new TGraph(vNonMatchb1.size(), &vNonMatchb1[0], &vNonMatchb2[0]);
+  auto gMatch = new TGraph(vMatchb1.size(), &vMatchb1[0], &vMatchb2[0]);
+  auto gElse = new TGraph(vElseb1.size(), &vElseb1[0], &vElseb2[0]);
+
+  cout << "gtrueSol: " << vtrueSolb1.size() << endl;
+  cout << "gBktsAlgSol: " << vNonMatchb1.size() << endl;
+  cout << "gElse: " << vElseb1.size() << endl;
+  
+  gtrueSol->SetName("gtrueSol");
+  gtrueSol->SetTitle(Form("truth (%i)", vtrueSolb1.size() ) );
+  //gtrueSol->SetTitle(Form("truth (%i, %i)", vtrueSolb1.size(), gtrueSol->GetN()) );
+  gtrueSol->SetMarkerStyle(7);
+//4); //hollow circle
+  gtrueSol->SetMarkerSize(3);
+  gtrueSol->SetMarkerColor(4); //blue
+
+  gNonMatch->SetName("gNonMatch");
+  gNonMatch->SetTitle(Form("incorrect solution (%i)", vNonMatchb1.size() ) );
+  gNonMatch->SetMarkerStyle(7); //point
+  gNonMatch->SetMarkerSize(3);
+  gNonMatch->SetMarkerColor(2); //red
+
+  gMatch->SetName("gMatch");
+  gMatch->SetTitle(Form("correct solution (%i)", vMatchb1.size() ) );
+  gMatch->SetMarkerStyle(7); //point
+  gMatch->SetMarkerSize(3);
+  gMatch->SetMarkerColor(3); //green
+
+
+  gElse->SetName("gElse");
+  gElse->SetTitle(Form("other pairs (%i)", vElseb1.size() ) );
+  gElse->SetMarkerStyle(7); //point
+  gElse->SetMarkerSize(3);
+  gElse->SetMarkerColor(1); //black
+  gElse->GetXaxis()->SetTitle("#Delta_{1}");
+  gElse->GetYaxis()->SetTitle("#Delta_{2}");
+  auto axis = gElse->GetXaxis();
+  axis->SetLimits(0, 30);        //along X
+  gElse->GetHistogram()->SetMaximum(pow(10,2));  //along Y
+
+  TMultiGraph *mg = new TMultiGraph();
+  mg->Add(gtrueSol, "p");
+  mg->Add(gNonMatch, "p");
+  mg->Add(gMatch, "p");
+  
+  gElse->Draw("AP");
+  mg->Draw();
+  //c.SetLogx();
+  //c.SetLogy();
+  c.BuildLegend();
+  c.Print("del1del2scatterplot.eps");
+  c.Clear();
+
+//
+  auto gall = new TGraph(vallb1.size(), &vallb1[0], &vallb2[0]);
+  gall->SetName("gall");
+  gall->SetTitle(Form("all combinations (%i)", vallb1.size() ) );
+  gall->SetMarkerStyle(7); //point
+  gall->SetMarkerSize(3);
+  gall->SetMarkerColor(2); //red
+  auto axisall = gall->GetXaxis();
+  axisall->SetLimits(0, 30);        //along X
+  gall->GetHistogram()->SetMaximum(pow(10,2));  //along Y
+  gall->Draw("AP");
+  c.BuildLegend();
+  c.Print("d1d2all.eps");
+  c.Clear();
+
+//
+  auto legdel1del2 = TLegend( 0.65, 0.75, 0.88, 0.88);
+  legdel1del2.SetFillColor(0);
+  legdel1del2.SetLineColor(1);
+  TH2F hElse("hElse", "", 30, 0, 30, 100, 0, 100);
+  auto nPointsElse = gElse->GetN();
+  for(int i=0; i < nPointsElse; ++i) {
+    double x,y;
+    gElse->GetPoint(i, x, y);
+    hElse.Fill(x,y); // 
+  }
+  hElse.GetXaxis()->SetTitle("#Delta_{1}");
+  hElse.GetYaxis()->SetTitle("#Delta_{2}");
+  cout << "gElse: " << vElseb1.size() <<  "\t" << hElse.Integral(1, 30, 1, 100 ) << endl;
+  hElse.SetStats(0);
+  hElse.SetLineColor(1); //black
+  hElse.SetMarkerSize(3);
+  hElse.SetMarkerStyle(7);
+  hElse.SetMarkerColor(1); //black
+  legdel1del2.AddEntry(&hElse, Form("other pairs: %.f (total: %.f)", hElse.Integral(1, 30, 1, 100), hElse.Integral(1, -1, 1, -1) ), "l");
+  
+  hElse.Draw("BOX");
+//
+
+//
+  TH2F htrueSol("htrueSol", "", 30, 0, 30, 100, 0, 100);
+  auto nPointstrueSol = gtrueSol->GetN();
+  for(int i=0; i < nPointstrueSol; ++i) {
+    double x,y;
+    gtrueSol->GetPoint(i, x, y);
+    htrueSol.Fill(x,y); // 
+  }
+  htrueSol.GetXaxis()->SetTitle("#Delta_{1}");
+  htrueSol.GetYaxis()->SetTitle("#Delta_{2}");
+  cout << "gtrueSol: " << vtrueSolb1.size() <<  "\t" << htrueSol.Integral(1, 30, 1, 100 ) << endl;
+  htrueSol.SetStats(0);
+  htrueSol.SetLineColor(4); //blue
+  htrueSol.SetMarkerSize(3);
+  htrueSol.SetMarkerStyle(7);
+  htrueSol.SetMarkerColor(4); //blue
+  legdel1del2.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, 30, 1, 100), htrueSol.Integral(1, -1, 1, -1) ), "l");
+  
+  htrueSol.Draw("BOX same");
+//
+
+//
+  TH2F hNonMatch("hNonMatch", "", 30, 0, 30, 100, 0, 100);
+  auto nPointsNonMatch = gNonMatch->GetN();
+  for(int i=0; i < nPointsNonMatch; ++i) {
+    double x,y;
+    gNonMatch->GetPoint(i, x, y);
+    hNonMatch.Fill(x,y); // 
+  }
+  hNonMatch.GetXaxis()->SetTitle("#Delta_{1}");
+  hNonMatch.GetYaxis()->SetTitle("#Delta_{2}");
+  cout << "gBktsAlgSol: " << vNonMatchb1.size() <<  "\t" << hNonMatch.Integral(1, 30, 1, 100 ) << endl;
+  hNonMatch.SetStats(0);
+  hNonMatch.SetLineColor(2); //red
+  hNonMatch.SetMarkerSize(3);
+  hNonMatch.SetMarkerStyle(7);
+  hNonMatch.SetMarkerColor(2); //red
+  legdel1del2.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, 30, 1, 100), hNonMatch.Integral(1, -1, 1, -1) ), "l");
+  
+  hNonMatch.Draw("BOX same");
+//
+
+//
+  TH2F hMatch("hMatch", "", 30, 0, 30, 100, 0, 100);
+  auto nPointsMatch = gMatch->GetN();
+  for(int i=0; i < nPointsMatch; ++i) {
+    double x,y;
+    gMatch->GetPoint(i, x, y);
+    hMatch.Fill(x,y); // 
+  }
+  hMatch.GetXaxis()->SetTitle("#Delta_{1}");
+  hMatch.GetYaxis()->SetTitle("#Delta_{2}");
+  cout << "gMatch: " << vMatchb1.size() <<  "\t" << hMatch.Integral(1, 30, 1, 100 ) << endl;
+  hMatch.SetStats(0);
+  hMatch.SetLineColor(3); //green
+  hMatch.SetMarkerSize(3);
+  hMatch.SetMarkerStyle(7);
+  hMatch.SetMarkerColor(3); //green
+  legdel1del2.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, 30, 1, 100), hMatch.Integral(1, -1, 1, -1) ), "l");
+  
+  hMatch.Draw("BOX same");
+//
+
+  legdel1del2.Draw();
+  c.Print("del1del2.eps");
+  c.Clear();
+
+  hMatch.Draw("BOX");
+  c.Print("del1del2_match.eps");
   c.Clear();
 
   f.Close();
