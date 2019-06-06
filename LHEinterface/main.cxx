@@ -927,31 +927,34 @@ int main()
   c.Clear();
 
 //
+  int NbinX = 7; //15;
+  int NbinY = 25;  //50;
+//
   auto legdel1del2 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legdel1del2.SetFillColor(0);
   legdel1del2.SetLineColor(1);
-  TH2F hElse("hElse", "", 30, 0, 30, 100, 0, 100);
-  auto nPointsElse = gElse->GetN();
-  for(int i=0; i < nPointsElse; ++i) {
-    double x,y;
-    gElse->GetPoint(i, x, y);
-    hElse.Fill(x,y); // 
-  }
-  hElse.GetXaxis()->SetTitle("#Delta_{1}");
-  hElse.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gElse: " << vElseb1.size() <<  "\t" << hElse.Integral(1, 30, 1, 100 ) << endl;
-  hElse.SetStats(0);
-  hElse.SetLineColor(1); //black
-  hElse.SetMarkerSize(3);
-  hElse.SetMarkerStyle(7);
-  hElse.SetMarkerColor(1); //black
-  legdel1del2.AddEntry(&hElse, Form("other pairs: %.f (total: %.f)", hElse.Integral(1, 30, 1, 100), hElse.Integral(1, -1, 1, -1) ), "l");
-  
-  hElse.Draw("BOX");
+//  TH2F hElse("hElse", "", NbinX, 0, 30, NbinY, 0, 100);
+//  auto nPointsElse = gElse->GetN();
+//  for(int i=0; i < nPointsElse; ++i) {
+//    double x,y;
+//    gElse->GetPoint(i, x, y);
+//    hElse.Fill(x,y); // 
+//  }
+//  hElse.GetXaxis()->SetTitle("#Delta_{1}");
+//  hElse.GetYaxis()->SetTitle("#Delta_{2}");
+//  cout << "gElse: " << vElseb1.size() <<  "\t" << hElse.Integral(1, NbinX, 1, NbinY ) << endl;
+//  hElse.SetStats(0);
+//  hElse.SetLineColor(1); //black
+//  hElse.SetMarkerSize(3);
+//  hElse.SetMarkerStyle(7);
+//  hElse.SetMarkerColor(1); //black
+//  legdel1del2.AddEntry(&hElse, Form("other pairs: %.f (total: %.f)", hElse.Integral(1, NbinX, 1, NbinY), hElse.Integral(1, -1, 1, -1) ), "l");
+//  
+//  hElse.Draw("BOX");
 //
 
 //
-  TH2F htrueSol("htrueSol", "", 30, 0, 30, 100, 0, 100);
+  TH2F htrueSol("htrueSol", "", NbinX, 0, 30, NbinY, 0, 100);
   auto nPointstrueSol = gtrueSol->GetN();
   for(int i=0; i < nPointstrueSol; ++i) {
     double x,y;
@@ -960,19 +963,18 @@ int main()
   }
   htrueSol.GetXaxis()->SetTitle("#Delta_{1}");
   htrueSol.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gtrueSol: " << vtrueSolb1.size() <<  "\t" << htrueSol.Integral(1, 30, 1, 100 ) << endl;
+  cout << "gtrueSol: " << vtrueSolb1.size() <<  "\t" << htrueSol.Integral(1, NbinX, 1, NbinY ) << endl;
   htrueSol.SetStats(0);
   htrueSol.SetLineColor(4); //blue
   htrueSol.SetMarkerSize(3);
   htrueSol.SetMarkerStyle(7);
   htrueSol.SetMarkerColor(4); //blue
-  legdel1del2.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, 30, 1, 100), htrueSol.Integral(1, -1, 1, -1) ), "l");
+  legdel1del2.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, NbinX, 1, NbinY), htrueSol.Integral(1, -1, 1, -1) ), "l");
   
-  htrueSol.Draw("BOX same");
 //
 
 //
-  TH2F hNonMatch("hNonMatch", "", 30, 0, 30, 100, 0, 100);
+  TH2F hNonMatch("hNonMatch", "", NbinX, 0, 30, NbinY, 0, 100);
   auto nPointsNonMatch = gNonMatch->GetN();
   for(int i=0; i < nPointsNonMatch; ++i) {
     double x,y;
@@ -981,19 +983,18 @@ int main()
   }
   hNonMatch.GetXaxis()->SetTitle("#Delta_{1}");
   hNonMatch.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gBktsAlgSol: " << vNonMatchb1.size() <<  "\t" << hNonMatch.Integral(1, 30, 1, 100 ) << endl;
+  cout << "gBktsAlgSol: " << vNonMatchb1.size() <<  "\t" << hNonMatch.Integral(1, NbinX, 1, NbinY ) << endl;
   hNonMatch.SetStats(0);
   hNonMatch.SetLineColor(2); //red
   hNonMatch.SetMarkerSize(3);
   hNonMatch.SetMarkerStyle(7);
   hNonMatch.SetMarkerColor(2); //red
-  legdel1del2.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, 30, 1, 100), hNonMatch.Integral(1, -1, 1, -1) ), "l");
+  legdel1del2.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, NbinX, 1, NbinY), hNonMatch.Integral(1, -1, 1, -1) ), "l");
   
-  hNonMatch.Draw("BOX same");
 //
 
 //
-  TH2F hMatch("hMatch", "", 30, 0, 30, 100, 0, 100);
+  TH2F hMatch("hMatch", "", NbinX, 0, 30, NbinY, 0, 100);
   auto nPointsMatch = gMatch->GetN();
   for(int i=0; i < nPointsMatch; ++i) {
     double x,y;
@@ -1002,14 +1003,17 @@ int main()
   }
   hMatch.GetXaxis()->SetTitle("#Delta_{1}");
   hMatch.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gMatch: " << vMatchb1.size() <<  "\t" << hMatch.Integral(1, 30, 1, 100 ) << endl;
+  cout << "gMatch: " << vMatchb1.size() <<  "\t" << hMatch.Integral(1, NbinX, 1, NbinY ) << endl;
   hMatch.SetStats(0);
   hMatch.SetLineColor(3); //green
   hMatch.SetMarkerSize(3);
   hMatch.SetMarkerStyle(7);
   hMatch.SetMarkerColor(3); //green
-  legdel1del2.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, 30, 1, 100), hMatch.Integral(1, -1, 1, -1) ), "l");
-  
+  legdel1del2.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, NbinX, 1, NbinY), hMatch.Integral(1, -1, 1, -1) ), "l");
+
+  htrueSol.SetMaximum(htrueSol.GetMaximum()*1.1);
+  htrueSol.Draw("BOX");
+  hNonMatch.Draw("BOX same");
   hMatch.Draw("BOX same");
 //
 
