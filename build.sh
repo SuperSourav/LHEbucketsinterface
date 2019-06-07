@@ -14,3 +14,6 @@ export LD_LIBRARY_PATH=$PWD:$LD_LIBRARY_PATH;
 
 g++ -Wall -L. -I ${SABHOME}/ ${LHEINTERFACEDIR}/LHEinterface/main.cxx -lBucketofTops $(root-config --cflags --libs);
 cd ..;
+#plotting macros
+ln -sf ${PWD}/LHEinterface/*py ${PWD}/build/
+ln -sf ${PWD}/LHEinterface/*txt ${PWD}/build/

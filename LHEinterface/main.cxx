@@ -276,6 +276,7 @@ int bucketmatcher(vector<string> lines, TLorentzVector b, vector <TLorentzVector
     int bindex = particleIndexfinder(lines, b);
     int nb1index = particleIndexfinder(lines, nonbs[0]);
     int nb2index = particleIndexfinder(lines, nonbs[1]);
+    ////cout << "B >>>> " << bindex << "\tNB1 >>>> " << nb1index << "\tNB2 >>>> " << nb2index << endl;
     //cout << ">>>>bindex: " << bindex << "\tnb1index: " << nb1index << "\tnb2index: " << nb2index << endl;
     //for (auto t: topDict){
     //cout << "B>>>bindex: " << t.second.bottom_index << "\tnb1index: " << t.second.Wdkq1_index << "\tnb2index: " << t.second.Wdkq2_index << endl;
@@ -283,20 +284,31 @@ int bucketmatcher(vector<string> lines, TLorentzVector b, vector <TLorentzVector
 
     for (auto t: topDict){
       if (bindex == t.second.bottom_index){
-        if ((nb1index == t.second.Wdkq1_index) && (nb2index == t.second.Wdkq2_index)){ match = 0; }
-        else if ((nb1index == t.second.Wdkq2_index) && (nb2index == t.second.Wdkq1_index)){ match = 0; }
+        if ((nb1index == t.second.Wdkq1_index) && (nb2index == t.second.Wdkq2_index))
+	{ 
+	   match = 0; 
+	   ////cout << "inside bucket matcher for full match:\tnonbindex1: " <<  nb1index << "\tnonbindex2: " << nb2index <<"\tWdkq1: " << t.second.Wdkq1_index << "\tWdkq2: " <<t.second.Wdkq2_index << "\tmatch: " << match << endl;
+	}
+        else if ((nb1index == t.second.Wdkq2_index) && (nb2index == t.second.Wdkq1_index))
+	{ 
+	   match = 0; 
+	   ////cout << "inside bucket matcher for full match:\tnonbindex1: " <<  nb1index << "\tnonbindex2: " <<  nb2index << "\tWdkq1: " << t.second.Wdkq1_index << "\tWdkq2: " <<t.second.Wdkq2_index << "\tmatch: " << match << endl;
+	}
       }
     }
   }
   else {
     int bindex = particleIndexfinder(lines, b);
     int nb1index = particleIndexfinder(lines, nonbs[0]);
+    ////cout << "B >>>> " << bindex << "\tNB1 >>>> " << nb1index << endl;
     for (auto t: topDict){
       if (bindex == t.second.bottom_index){
         if ((nb1index == t.second.Wdkq1_index) || (nb1index == t.second.Wdkq2_index)){ match = 2; }
+	////cout << "inside bucket matcher:\tnonbindex: " <<  nb1index << "\tWdkq1: " << t.second.Wdkq1_index << "\tWdkq2: " <<t.second.Wdkq2_index << "\tmatch: " << match << endl;
       }
     }
   }
+  ////cout << "match: " << match << endl;
   return match;
 }
 
@@ -318,8 +330,10 @@ int main()
   int Wcount = 0;
   bool event_flag = false; //switches on when finds an event
   bool event_meta = false; //event block readability switched off to skip the first event block line
+  bool unlock = false;
   std::vector <TLorentzVector> specbjets;
   std::vector <TLorentzVector> specnonbjets;
+  std::vector <TLorentzVector> specnonbjetssub; //to mimic notallhad t (missing neutrino)
   //mass
   TH1F htwt0mass("htwt0mass", "Mass of tw and t0 Buckets superposed",150,0.0001,300); 
   TH1F htwmass("htwmass", "Mass of tw Buckets",150,0.0001,300); 
@@ -359,6 +373,7 @@ int main()
   //
   TH1F hmBucketPrim0C("hmBucketPrimitiveB1C", "Mass of the B1 Bucket before Recalculation",75,100,250); 
   TH1F hmBucketPrim1C("hmBucketPrimitiveB2C", "Mass of the B2 Bucket before Recalculation",75,100,250); 
+  TH1F hmBucketB2Correctsubset("hmBucketPrimitiveB2Correctsubset", "Mass of the B2 Bucket before Recalculation",250,0,500); 
 
   //njets
   TH1F hnonbjetB1C("hnonbjetB1C", "non b jets in B1", 16, -0.5, 15.5);
@@ -403,6 +418,7 @@ int main()
     {
       event_flag = true;
       if (eventcounter == 1000) {break;}
+      //if (eventcounter == 92) {break;}
       //if (eventcounter == 2) {break;}
       cout << "event: " << eventcounter << endl;
       eventcounter++; 
@@ -419,8 +435,14 @@ int main()
         for (auto t: topDict){
           hMVal.Fill(t.second.validateMass());
         }
-        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjets);
+        
+	for (int i=0; i < (specnonbjets.size()-1) ; i++)    //drop the last quark to mimic neutrino
+	{
+	  specnonbjetssub.push_back(specnonbjets[i]);
+	}
+        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjetssub);
         std::vector<bucketAlgo::bucket>& bucklist = *m_buckets->returnbucketlistptr();
+        std::vector<float> m_mBucketPrim = m_buckets->mBucketPrim;
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
 	bucketAlgo::bucketpairs allprebpairs = m_buckets->allbucketpairstw;
@@ -429,13 +451,15 @@ int main()
 	for (std::map< int , std::vector<bucketAlgo::bucket> >::iterator it=prebpairMap.begin(); it !=prebpairMap.end(); ++it)
 	{
           std::vector<bucketAlgo::bucket> preblist = it->second;
-          double d1 = preblist[0].twdelta;
+          double d1 = preblist[0].twB1delta;
 	  //twOptMetric();
 	  TLorentzVector preb1bjet = preblist[0].BJET;
 	  vector<TLorentzVector> preb1nonbjets = preblist[0].nonBJETS;
+	  ////cout << "b1 >>" << endl;
           int b1truthmatchFlag = bucketmatcher(lines, preb1bjet, preb1nonbjets, topDict);
-          double d2 = preblist[1].twdelta;
+          double d2 = preblist[1].twB2delta;
 	  //twOptMetric();
+	  ////cout << "b2 >>" << endl;
 	  TLorentzVector preb2bjet = preblist[1].BJET;
 	  vector<TLorentzVector> preb2nonbjets = preblist[1].nonBJETS;
           int b2truthmatchFlag = bucketmatcher(lines, preb2bjet, preb2nonbjets, topDict);
@@ -443,18 +467,20 @@ int main()
 	  //cout << "d1 main: " << d1 << "\td2 main: " << d2 << endl;
 	  vallb1.push_back(pow(d1, 0.5));
 	  vallb2.push_back(pow(d2, 0.5));
-          if ((b1truthmatchFlag==0) && (b2truthmatchFlag==0))
+          //very rarely the incomplete bucket is closer to top mass than the complete bucket (~0.6%), so the OR condition for truth
+          if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==2)) || ((b2truthmatchFlag==0) && (b1truthmatchFlag==2)) )
           {
 	    //cout << "index at truth: " << it->first << endl;
             vtrueSolb1.push_back(pow(d1, 0.5));
             vtrueSolb2.push_back(pow(d2, 0.5));
+	    if (b2truthmatchFlag==2) {hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());}
+	    else {hmBucketB2Correctsubset.Fill(preblist[0].getBucketMass());}
           }
-
 
           if (it->first == AlgSol)
           {
 	    //cout << "index at algo sol: " << it->first << endl;
-            if ((b1truthmatchFlag==0) && (b2truthmatchFlag==0))
+            if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==2)) || ((b2truthmatchFlag==0) && (b1truthmatchFlag==2)) )
             {
   	    //cout << "index at truth: " << it->first << endl;
               vMatchb1.push_back(pow(d1, 0.5));
@@ -474,6 +500,7 @@ int main()
 	}
 
 
+
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//prebuckets are buckets before labels are added to them
@@ -489,7 +516,6 @@ int main()
 	//
         for(auto v: m_buckets->mWcand) {hmW.Fill(v);} 
         for(auto v: m_buckets->mBucketPrim) {hmBucketPrim.Fill(v);}
-        std::vector<float> m_mBucketPrim = m_buckets->mBucketPrim;
         hmBucketPrim0.Fill(m_mBucketPrim.at(0));
         if (B1truthmatchFlag == 0) {hmBucketPrim0C.Fill(m_mBucketPrim.at(0));} //truthmatched
 	else if (B1truthmatchFlag == 1) {hmBucketPrim0Wcontamination.Fill(m_mBucketPrim.at(0));} //contamination
@@ -540,6 +566,7 @@ int main()
       }
       specbjets.clear();
       specnonbjets.clear();
+      specnonbjetssub.clear();
       lines.clear();
       Wcount = 0;
       //insert event operations before clearing the vector 
@@ -855,6 +882,16 @@ int main()
   c.Update();
   c.Print("cpp_reconstructed_nonbjetcountBISR.eps");
   c.Clear();
+  //incomplete top mass (use median mass for target mass of B2)
+  hmBucketB2Correctsubset.GetXaxis()->SetTitle("Incomplete top mass [GeV]");
+  const int nq = 1;
+  double xq[nq], yq[nq];
+  xq[0] = 0.5;
+  hmBucketB2Correctsubset.GetQuantiles(nq, yq, xq); 
+  hmBucketB2Correctsubset.SetTitle (Form("median mass %.2f GeV", yq[0]));
+  hmBucketB2Correctsubset.Draw();
+  c.Print("trueincompletebucketMass.eps");
+  c.Clear();
 
   //delta scatter plot for all bucket pairs
   auto gtrueSol = new TGraph(vtrueSolb1.size(), &vtrueSolb1[0], &vtrueSolb2[0]);
@@ -895,8 +932,8 @@ int main()
   gElse->GetXaxis()->SetTitle("#Delta_{1}");
   gElse->GetYaxis()->SetTitle("#Delta_{2}");
   auto axis = gElse->GetXaxis();
-  axis->SetLimits(0, 30);        //along X
-  gElse->GetHistogram()->SetMaximum(pow(10,2));  //along Y
+  //axis->SetLimits(0, 30);        //along X
+  //gElse->GetHistogram()->SetMaximum(pow(10,2));  //along Y
 
   TMultiGraph *mg = new TMultiGraph();
   mg->Add(gtrueSol, "p");
@@ -927,13 +964,15 @@ int main()
   c.Clear();
 
 //
-  int NbinX = 7; //15;
-  int NbinY = 25;  //50;
+  int NbinX = 10; //15;
+  int NbinY = 100;  //50;
+  double Xmax = 50;
+  double Ymax = 200; 
 //
   auto legdel1del2 = TLegend( 0.65, 0.75, 0.88, 0.88);
   legdel1del2.SetFillColor(0);
   legdel1del2.SetLineColor(1);
-//  TH2F hElse("hElse", "", NbinX, 0, 30, NbinY, 0, 100);
+//  TH2F hElse("hElse", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
 //  auto nPointsElse = gElse->GetN();
 //  for(int i=0; i < nPointsElse; ++i) {
 //    double x,y;
@@ -954,7 +993,7 @@ int main()
 //
 
 //
-  TH2F htrueSol("htrueSol", "", NbinX, 0, 30, NbinY, 0, 100);
+  TH2F htrueSol("htrueSol", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
   auto nPointstrueSol = gtrueSol->GetN();
   for(int i=0; i < nPointstrueSol; ++i) {
     double x,y;
@@ -974,7 +1013,7 @@ int main()
 //
 
 //
-  TH2F hNonMatch("hNonMatch", "", NbinX, 0, 30, NbinY, 0, 100);
+  TH2F hNonMatch("hNonMatch", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
   auto nPointsNonMatch = gNonMatch->GetN();
   for(int i=0; i < nPointsNonMatch; ++i) {
     double x,y;
@@ -994,7 +1033,7 @@ int main()
 //
 
 //
-  TH2F hMatch("hMatch", "", NbinX, 0, 30, NbinY, 0, 100);
+  TH2F hMatch("hMatch", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
   auto nPointsMatch = gMatch->GetN();
   for(int i=0; i < nPointsMatch; ++i) {
     double x,y;
