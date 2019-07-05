@@ -31,7 +31,7 @@ class topquark; //forward declare
 
 TRandom *r = new TRandom();
 
-TLorentzVector smear(TLorentzVector v)
+TLorentzVector smear(TLorentzVector v, float smearwidth)
 {
   float E, eta, theta, phi, M, pt;
   //default_random_engine generator;
@@ -40,7 +40,7 @@ TLorentzVector smear(TLorentzVector v)
   E = v.E();
   //float Enew = r->Gaus(E, sqrt(E));
   float rand = r->Gaus(0, 1);
-  float Enew = E + sqrt(E)*(rand);
+  float Enew = E + smearwidth*sqrt(E)*(rand);
   E = (Enew > 0) ? Enew : 0;
   M = v.M();
   eta = v.Eta();
@@ -323,7 +323,7 @@ int main()
   //ifstream inFile("../tt_hadronic.lhe");
   ifstream inFile("/afs/cern.ch/work/s/sosen/ChongbinTop/lhe/tt_hadronic.lhe");
   //ifstream inFile("/afs/cern.ch/work/s/sosen/ChongbinTop/lhe/bbjjj.lhe");
-  //ifstream inFile("../bbjjj_short.lhe");
+  ///ifstream inFile("../bbjjj_short.lhe");
   
   string line;
   std::vector <string> lines;
@@ -333,7 +333,14 @@ int main()
   bool unlock = false;
   std::vector <TLorentzVector> specbjets;
   std::vector <TLorentzVector> specnonbjets;
+  std::vector <TLorentzVector> specnontruthbjets;
   std::vector <TLorentzVector> specnonbjetssub; //to mimic notallhad t (missing neutrino)
+  
+  //smearing width
+  float smearwidth;
+  //smearwidth = 0.8;//
+  //smearwidth = 1.0;//
+  smearwidth = 1.2;//
   //mass
   TH1F htwt0mass("htwt0mass", "Mass of tw and t0 Buckets superposed",150,0.0001,300); 
   TH1F htwmass("htwmass", "Mass of tw Buckets",150,0.0001,300); 
@@ -417,7 +424,7 @@ int main()
     if (line.find("<event>") != string::npos) 
     {
       event_flag = true;
-      if (eventcounter == 1000) {break;}
+      //if (eventcounter == 1000) {break;}
       //if (eventcounter == 92) {break;}
       //if (eventcounter == 2) {break;}
       cout << "event: " << eventcounter << endl;
@@ -438,7 +445,12 @@ int main()
         
 	for (int i=0; i < (specnonbjets.size()-1) ; i++)    //drop the last quark to mimic neutrino
 	{
-	  specnonbjetssub.push_back(specnonbjets[i]);
+	  if (i == (specnonbjets.size()-2)) {
+	      specnonbjetssub.push_back(specnontruthbjets[i]);   //removed smearing for the incomplete W nonbjet to mimic lepton
+	  }
+	  else {
+	      specnonbjetssub.push_back(specnonbjets[i]);
+	  }
 	}
         BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjetssub);
         std::vector<bucketAlgo::bucket>& bucklist = *m_buckets->returnbucketlistptr();
@@ -565,6 +577,7 @@ int main()
 	hnonbjetBISR.Fill(m_buckets->nonbISRcount); 
       }
       specbjets.clear();
+      specnontruthbjets.clear();
       specnonbjets.clear();
       specnonbjetssub.clear();
       lines.clear();
@@ -601,14 +614,15 @@ int main()
 	      TLorentzVector temb;
 	      temb.SetPxPyPzE(px, py, pz, E);
 	      //specbjets.push_back(temb);
-	      specbjets.push_back(smear(temb));
+	      specbjets.push_back(smear(temb, smearwidth));
 	    }
 	    else
             {
 	      TLorentzVector temnonb;
 	      temnonb.SetPxPyPzE(px, py, pz, E);
 	      //specnonbjets.push_back(temnonb);
-	      specnonbjets.push_back(smear(temnonb));
+	      specnontruthbjets.push_back(temnonb);
+	      specnonbjets.push_back(smear(temnonb, smearwidth));
 	    }
           }
 	  else if (abs(pid) == 24){Wcount++;}
@@ -960,12 +974,12 @@ int main()
   gall->GetHistogram()->SetMaximum(pow(10,2));  //along Y
   gall->Draw("AP");
   c.BuildLegend();
-  c.Print("d1d2all.eps");
+  c.Print(Form("d1d2all_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
 //
   int NbinX = 10; //15;
-  int NbinY = 100;  //50;
+  int NbinY = 25;  //50;
   double Xmax = 50;
   double Ymax = 200; 
 //
@@ -1057,11 +1071,11 @@ int main()
 //
 
   legdel1del2.Draw();
-  c.Print("del1del2.eps");
+  c.Print(Form("del1del2_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
   hMatch.Draw("BOX");
-  c.Print("del1del2_match.eps");
+  c.Print(Form("del1del2_match_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
   f.Close();
