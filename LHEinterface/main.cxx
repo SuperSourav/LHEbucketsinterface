@@ -317,6 +317,7 @@ int bucketmatcher(vector<string> lines, TLorentzVector b, vector <TLorentzVector
 int main()
 {
   gStyle->SetOptStat("irmen");
+  TH1::StatOverflows(true);// also count under-/overflow for stats box
 		  //001001111);
   //ifstream inFile("../tt_had_test_one.lhe");
   //ifstream inFile("../tt_had_test.lhe");
@@ -334,7 +335,6 @@ int main()
   std::vector <TLorentzVector> specbjets;
   std::vector <TLorentzVector> specnonbjets;
   std::vector <TLorentzVector> specnontruthbjets;
-  std::vector <TLorentzVector> specnonbjetssub; //to mimic notallhad t (missing neutrino)
   
   //smearing width
   float smearwidth;
@@ -399,18 +399,43 @@ int main()
   TH1F hnonbjetB2Wcontamination("hnonbjetB2Wcontamination", "non b jets in B2", 16, -0.5, 15.5);
   TH1F hnonbjetB2Wsubset("hnonbjetB2Wsubset", "non b jets in B2", 16, -0.5, 15.5);
 
-  //for all bucket pairs scatter plot
-  std::vector<double> vallb1; //should be one point per event
-  std::vector<double> vallb2; //should be one point per event
-  std::vector<double> vtrueSolb1; //should be one point per event
-  std::vector<double> vNonMatchb1; //should be one point per event
-  std::vector<double> vElseb1;
-  std::vector<double> vtrueSolb2; //should be one point per event
-  std::vector<double> vNonMatchb2; //should be one point per event
-  std::vector<double> vElseb2;
-  std::vector<double> vMatchb1;  //should be one point per event
-  std::vector<double> vMatchb2;  //should be one point per event
 
+  //delta plots
+  TH1F hDeltaTop("hDeltaTop", "#Delta_{top}", 50, -50, 50);
+  TH1F hDeltaTop1("hDeltaTop1", "#Delta_{top1}", 50, -50, 50);
+  TH1F hDeltaTop2("hDeltaTop2", "#Delta_{top2}", 50, -50, 50);
+  TH1F hDeltaW("hDeltaW", "#Delta_{W}", 30, -0.3, 0.3);
+  TH1F hDeltaW1("hDeltaW1", "#Delta_{W1}", 30, -0.3, 0.3);
+  TH1F hDeltaW2("hDeltaW2", "#Delta_{W2}", 30, -0.3, 0.3);
+  //TH1F hDeltaTop1("hDeltaTop1", "#Delta_{top1}", 40, -10, 10);
+  //TH1F hDeltaTop2("hDeltaTop2", "#Delta_{top2}", 40, -10, 10);
+  //TH1F hDeltaW1("hDeltaW1", "#Delta_{W1}", 40, -10, 10);
+  //TH1F hDeltaW2("hDeltaW2", "#Delta_{W2}", 40, -10, 10);
+
+
+
+  //for all bucket pairs scatter plot
+  //std::vector<double> vallb1; //should be one point per event
+  //std::vector<double> vallb2; //should be one point per event
+  //std::vector<double> vtrueSolb1; //should be one point per event
+  //std::vector<double> vNonMatchb1; //should be one point per event
+  //std::vector<double> vElseb1;
+  //std::vector<double> vtrueSolb2; //should be one point per event
+  //std::vector<double> vNonMatchb2; //should be one point per event
+  //std::vector<double> vElseb2;
+  //std::vector<double> vMatchb1;  //should be one point per event
+  //std::vector<double> vMatchb2;  //should be one point per event
+
+  std::vector<double> vallbtop; //should be one point per event
+  std::vector<double> vallbw; //should be one point per event
+  std::vector<double> vtrueSolbtop; //should be one point per event
+  std::vector<double> vNonMatchbtop; //should be one point per event
+  std::vector<double> vElsebtop;
+  std::vector<double> vtrueSolbw; //should be one point per event
+  std::vector<double> vNonMatchbw; //should be one point per event
+  std::vector<double> vElsebw;
+  std::vector<double> vMatchbtop;  //should be one point per event
+  std::vector<double> vMatchbw;  //should be one point per event
 
 
 //  
@@ -424,10 +449,11 @@ int main()
     if (line.find("<event>") != string::npos) 
     {
       event_flag = true;
+      //if (eventcounter == 10000) {break;}
       //if (eventcounter == 1000) {break;}
       //if (eventcounter == 92) {break;}
-      //if (eventcounter == 2) {break;}
-      cout << "event: " << eventcounter << endl;
+      //if (eventcounter == 10) {break;}
+      if (eventcounter%500 == 0) cout << "event: " << eventcounter << endl;
       eventcounter++; 
       //cout << line << "\t" << event_flag << endl;
     }
@@ -443,16 +469,7 @@ int main()
           hMVal.Fill(t.second.validateMass());
         }
         
-	for (int i=0; i < (specnonbjets.size()-1) ; i++)    //drop the last quark to mimic neutrino
-	{
-	  if (i == (specnonbjets.size()-2)) {
-	      specnonbjetssub.push_back(specnontruthbjets[i]);   //removed smearing for the incomplete W nonbjet to mimic lepton
-	  }
-	  else {
-	      specnonbjetssub.push_back(specnonbjets[i]);
-	  }
-	}
-        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjetssub);
+        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjets);
         std::vector<bucketAlgo::bucket>& bucklist = *m_buckets->returnbucketlistptr();
         std::vector<float> m_mBucketPrim = m_buckets->mBucketPrim;
 
@@ -463,52 +480,63 @@ int main()
 	for (std::map< int , std::vector<bucketAlgo::bucket> >::iterator it=prebpairMap.begin(); it !=prebpairMap.end(); ++it)
 	{
           std::vector<bucketAlgo::bucket> preblist = it->second;
-          double d1 = preblist[0].twB1delta;
+          double dtop = allprebpairs.deltop[it->first];
 	  //twOptMetric();
 	  TLorentzVector preb1bjet = preblist[0].BJET;
 	  vector<TLorentzVector> preb1nonbjets = preblist[0].nonBJETS;
 	  ////cout << "b1 >>" << endl;
           int b1truthmatchFlag = bucketmatcher(lines, preb1bjet, preb1nonbjets, topDict);
-          double d2 = preblist[1].twB2delta;
+          double dw = allprebpairs.delw[it->first];
 	  //twOptMetric();
 	  ////cout << "b2 >>" << endl;
 	  TLorentzVector preb2bjet = preblist[1].BJET;
 	  vector<TLorentzVector> preb2nonbjets = preblist[1].nonBJETS;
           int b2truthmatchFlag = bucketmatcher(lines, preb2bjet, preb2nonbjets, topDict);
           //cout << "index: " << it->first << endl;
-	  //cout << "d1 main: " << d1 << "\td2 main: " << d2 << endl;
-	  vallb1.push_back(pow(d1, 0.5));
-	  vallb2.push_back(pow(d2, 0.5));
-          //very rarely the incomplete bucket is closer to top mass than the complete bucket (~0.6%), so the OR condition for truth
-          if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==2)) || ((b2truthmatchFlag==0) && (b1truthmatchFlag==2)) )
+	  vallbtop.push_back(pow(dtop, 0.5));
+	  vallbw.push_back(pow(dw, 0.5));
+          if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==0)) )
           {
 	    //cout << "index at truth: " << it->first << endl;
-            vtrueSolb1.push_back(pow(d1, 0.5));
-            vtrueSolb2.push_back(pow(d2, 0.5));
-	    if (b2truthmatchFlag==2) {hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());}
+	    hDeltaTop1.Fill(preblist[0].dT);
+	    //preblist[0].twflag();
+            hDeltaW1.Fill(preblist[0].dW);
+	    hDeltaTop2.Fill(preblist[1].dT);
+	    //preblist[1].twflag();
+            hDeltaW2.Fill(preblist[1].dW);
+	    hDeltaTop.Fill(preblist[0].dT);
+	    hDeltaTop.Fill(preblist[1].dT);
+            hDeltaW.Fill(preblist[0].dW);
+            hDeltaW.Fill(preblist[1].dW);
+            vtrueSolbtop.push_back(pow(dtop, 0.5));
+            vtrueSolbw.push_back(pow(dw, 0.5));
+	    if (b2truthmatchFlag==0) {hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());}
 	    else {hmBucketB2Correctsubset.Fill(preblist[0].getBucketMass());}
+
           }
 
           if (it->first == AlgSol)
           {
+            //cout << b1truthmatchFlag << " and " << b2truthmatchFlag << endl;
 	    //cout << "index at algo sol: " << it->first << endl;
-            if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==2)) || ((b2truthmatchFlag==0) && (b1truthmatchFlag==2)) )
+            if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==0)) )
             {
   	    //cout << "index at truth: " << it->first << endl;
-              vMatchb1.push_back(pow(d1, 0.5));
-              vMatchb2.push_back(pow(d2, 0.5));
+              vMatchbtop.push_back(pow(dtop, 0.5));
+              vMatchbw.push_back(pow(dw, 0.5));
             }
-	    else
-            {
-              vNonMatchb1.push_back(pow(d1, 0.5));
-              vNonMatchb2.push_back(pow(d2, 0.5));
+	    else 
+	    {
+              vNonMatchbtop.push_back(pow(dtop, 0.5));
+              vNonMatchbw.push_back(pow(dw, 0.5));
             }
           }
           if (it->first != AlgSol)
           {
-            vElseb1.push_back(pow(d1, 0.5));
-            vElseb2.push_back(pow(d2, 0.5));
+            vElsebtop.push_back(pow(dtop, 0.5));
+            vElsebw.push_back(pow(dw, 0.5));
           }
+
 	}
 
 
@@ -516,22 +544,26 @@ int main()
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//prebuckets are buckets before labels are added to them
-	TLorentzVector prebucket1bjet = m_buckets->B1bjet;
+
+        TLorentzVector prebucket1bjet = m_buckets->B1bjet;
 	vector<TLorentzVector> prebucket1nonbjets = m_buckets->B1nonbjets;
         int B1truthmatchFlag = bucketmatcher(lines, prebucket1bjet, prebucket1nonbjets, topDict);
 	TLorentzVector prebucket2bjet = m_buckets->B2bjet;
 	vector<TLorentzVector> prebucket2nonbjets = m_buckets->B2nonbjets; 
         int B2truthmatchFlag = bucketmatcher(lines, prebucket2bjet, prebucket2nonbjets, topDict);
+
         //for (auto t: topDict){
     //cout << "B>bindex: " << t.second.bottom_index << "\tnb1index: " << t.second.Wdkq1_index << "\tnb2index: " << t.second.Wdkq2_index << endl;}
 	//cout << "B1flag: " << B1truthmatchFlag << "\tB2flag: " << B2truthmatchFlag << endl;
 	//
+
         for(auto v: m_buckets->mWcand) {hmW.Fill(v);} 
         for(auto v: m_buckets->mBucketPrim) {hmBucketPrim.Fill(v);}
         hmBucketPrim0.Fill(m_mBucketPrim.at(0));
         if (B1truthmatchFlag == 0) {hmBucketPrim0C.Fill(m_mBucketPrim.at(0));} //truthmatched
 	else if (B1truthmatchFlag == 1) {hmBucketPrim0Wcontamination.Fill(m_mBucketPrim.at(0));} //contamination
 	else {hmBucketPrim0Wsubset.Fill(m_mBucketPrim.at(0));} //subset
+
 	/*cout << "B1 mass: " << m_mBucketPrim.at(0) <<endl;
         for(auto v: bucklist[0].nonBJETS) {
 	  cout << "B1 nonb-jet:" << "\tpx: " << v.Px() << "\tpy: " << v.Py() << "\tpz: " << v.Pz() << "\tE: " << v.E() << endl;
@@ -544,6 +576,7 @@ int main()
         if (B2truthmatchFlag == 0) {hmBucketPrim1C.Fill(m_mBucketPrim.at(1));} //
 	else if (B2truthmatchFlag == 1) {hmBucketPrim1Wcontamination.Fill(m_mBucketPrim.at(1));} //contamination
 	else {hmBucketPrim1Wsubset.Fill(m_mBucketPrim.at(1));} //subset
+
 	/*cout << "B2 mass: " << m_mBucketPrim.at(1) <<endl;
         for(auto v: bucklist[1].nonBJETS) {
 	  cout << "B1 nonb-jet:" << "\tpx: " << v.Px() << "\tpy: " << v.Py() << "\tpz: " << v.Pz() << "\tE: " << v.E() << endl;
@@ -575,11 +608,11 @@ int main()
 	else if (B2truthmatchFlag == 1) {hnonbjetB2Wcontamination.Fill(m_buckets->nonb2count);} //contamination
 	else {hnonbjetB2Wsubset.Fill(m_buckets->nonb2count);} //subset
 	hnonbjetBISR.Fill(m_buckets->nonbISRcount); 
+
       }
       specbjets.clear();
       specnontruthbjets.clear();
       specnonbjets.clear();
-      specnonbjetssub.clear();
       lines.clear();
       Wcount = 0;
       //insert event operations before clearing the vector 
@@ -759,6 +792,7 @@ int main()
   c.Modified();*/
   c.Print("cpp_reconstructed_top_m_b.eps");
   c.Clear();
+ 
   hmBucketPrim0.GetXaxis()->SetTitle("Mass (GeV)");
   hmBucketPrim0.Write();
   hmBucketPrim0.Draw();
@@ -908,17 +942,22 @@ int main()
   c.Clear();
 
   //delta scatter plot for all bucket pairs
-  auto gtrueSol = new TGraph(vtrueSolb1.size(), &vtrueSolb1[0], &vtrueSolb2[0]);
-  auto gNonMatch = new TGraph(vNonMatchb1.size(), &vNonMatchb1[0], &vNonMatchb2[0]);
-  auto gMatch = new TGraph(vMatchb1.size(), &vMatchb1[0], &vMatchb2[0]);
-  auto gElse = new TGraph(vElseb1.size(), &vElseb1[0], &vElseb2[0]);
+  //auto gtrueSol = new TGraph(vtrueSolb1.size(), &vtrueSolb1[0], &vtrueSolb2[0]);
+  //auto gNonMatch = new TGraph(vNonMatchb1.size(), &vNonMatchb1[0], &vNonMatchb2[0]);
+  //auto gMatch = new TGraph(vMatchb1.size(), &vMatchb1[0], &vMatchb2[0]);
+  //auto gElse = new TGraph(vElseb1.size(), &vElseb1[0], &vElseb2[0]);
+  auto gtrueSol = new TGraph(vtrueSolbtop.size(), &vtrueSolbtop[0], &vtrueSolbw[0]);
+  auto gNonMatch = new TGraph(vNonMatchbtop.size(), &vNonMatchbtop[0], &vNonMatchbw[0]);
+  auto gMatch = new TGraph(vMatchbtop.size(), &vMatchbtop[0], &vMatchbw[0]);
+  auto gElse = new TGraph(vElsebtop.size(), &vElsebtop[0], &vElsebw[0]);
 
-  cout << "gtrueSol: " << vtrueSolb1.size() << endl;
-  cout << "gBktsAlgSol: " << vNonMatchb1.size() << endl;
-  cout << "gElse: " << vElseb1.size() << endl;
+  cout << "gtrueSol: " << vtrueSolbtop.size() << endl;
+  cout << "gBktsAlgSol: " << vNonMatchbtop.size() << endl;
+  cout << "gElse: " << vElsebtop.size() << endl;
   
   gtrueSol->SetName("gtrueSol");
-  gtrueSol->SetTitle(Form("truth (%i)", vtrueSolb1.size() ) );
+  //gtrueSol->SetTitle(Form("truth (%i)", vtrueSolb1.size() ) );
+  gtrueSol->SetTitle(Form("truth (%i)", vtrueSolbtop.size() ) );
   //gtrueSol->SetTitle(Form("truth (%i, %i)", vtrueSolb1.size(), gtrueSol->GetN()) );
   gtrueSol->SetMarkerStyle(7);
 //4); //hollow circle
@@ -926,20 +965,23 @@ int main()
   gtrueSol->SetMarkerColor(4); //blue
 
   gNonMatch->SetName("gNonMatch");
-  gNonMatch->SetTitle(Form("incorrect solution (%i)", vNonMatchb1.size() ) );
+  //gNonMatch->SetTitle(Form("incorrect solution (%i)", vNonMatchb1.size() ) );
+  gNonMatch->SetTitle(Form("incorrect solution (%i)", vNonMatchbtop.size() ) );
   gNonMatch->SetMarkerStyle(7); //point
   gNonMatch->SetMarkerSize(3);
   gNonMatch->SetMarkerColor(2); //red
 
   gMatch->SetName("gMatch");
-  gMatch->SetTitle(Form("correct solution (%i)", vMatchb1.size() ) );
+  //gMatch->SetTitle(Form("correct solution (%i)", vMatchb1.size() ) );
+  gMatch->SetTitle(Form("correct solution (%i)", vMatchbtop.size() ) );
   gMatch->SetMarkerStyle(7); //point
   gMatch->SetMarkerSize(3);
   gMatch->SetMarkerColor(3); //green
 
 
   gElse->SetName("gElse");
-  gElse->SetTitle(Form("other pairs (%i)", vElseb1.size() ) );
+  //gElse->SetTitle(Form("other pairs (%i)", vElseb1.size() ) );
+  gElse->SetTitle(Form("other pairs (%i)", vElsebtop.size() ) );
   gElse->SetMarkerStyle(7); //point
   gElse->SetMarkerSize(3);
   gElse->SetMarkerColor(1); //black
@@ -959,13 +1001,14 @@ int main()
   //c.SetLogx();
   //c.SetLogy();
   c.BuildLegend();
-  c.Print("del1del2scatterplot.eps");
+  c.Print("delTdelWscatterplot.eps");
+  //c.Print("del1del2scatterplot.eps");
   c.Clear();
 
 //
-  auto gall = new TGraph(vallb1.size(), &vallb1[0], &vallb2[0]);
+  auto gall = new TGraph(vallbtop.size(), &vallbtop[0], &vallbw[0]);
   gall->SetName("gall");
-  gall->SetTitle(Form("all combinations (%i)", vallb1.size() ) );
+  gall->SetTitle(Form("all combinations (%i)", vallbtop.size() ) );
   gall->SetMarkerStyle(7); //point
   gall->SetMarkerSize(3);
   gall->SetMarkerColor(2); //red
@@ -974,18 +1017,19 @@ int main()
   gall->GetHistogram()->SetMaximum(pow(10,2));  //along Y
   gall->Draw("AP");
   c.BuildLegend();
-  c.Print(Form("d1d2all_smearwidth_%.1f_.eps", smearwidth));
+  c.Print(Form("dTdWall_smearwidth_%.1f_.eps", smearwidth));
+  //c.Print(Form("d1d2all_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
 //
-  int NbinX = 10; //15;
-  int NbinY = 25;  //50;
-  double Xmax = 50;
-  double Ymax = 200; 
+  //int NbinX = 10; //15;
+  //int NbinY = 25;  //50;
+  //double Xmax = 50;
+  //double Ymax = 200; 
 //
-  auto legdel1del2 = TLegend( 0.65, 0.75, 0.88, 0.88);
-  legdel1del2.SetFillColor(0);
-  legdel1del2.SetLineColor(1);
+//  auto legdel1del2 = TLegend( 0.65, 0.75, 0.88, 0.88);
+//  legdel1del2.SetFillColor(0);
+//  legdel1del2.SetLineColor(1);
 //  TH2F hElse("hElse", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
 //  auto nPointsElse = gElse->GetN();
 //  for(int i=0; i < nPointsElse; ++i) {
@@ -1006,6 +1050,124 @@ int main()
 //  hElse.Draw("BOX");
 //
 
+////
+//  TH2F htrueSol("htrueSol", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
+//  auto nPointstrueSol = gtrueSol->GetN();
+//  for(int i=0; i < nPointstrueSol; ++i) {
+//    double x,y;
+//    gtrueSol->GetPoint(i, x, y);
+//    htrueSol.Fill(x,y); // 
+//  }
+//  htrueSol.GetXaxis()->SetTitle("#Delta_{1}");
+//  htrueSol.GetYaxis()->SetTitle("#Delta_{2}");
+//  cout << "gtrueSol: " << vtrueSolb1.size() <<  "\t" << htrueSol.Integral(1, NbinX, 1, NbinY ) << endl;
+//  htrueSol.SetStats(0);
+//  htrueSol.SetLineColor(4); //blue
+//  htrueSol.SetMarkerSize(3);
+//  htrueSol.SetMarkerStyle(7);
+//  htrueSol.SetMarkerColor(4); //blue
+//  legdel1del2.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, NbinX, 1, NbinY), htrueSol.Integral(1, -1, 1, -1) ), "l");
+//  
+////
+//
+////
+//  TH2F hNonMatch("hNonMatch", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
+//  auto nPointsNonMatch = gNonMatch->GetN();
+//  for(int i=0; i < nPointsNonMatch; ++i) {
+//    double x,y;
+//    gNonMatch->GetPoint(i, x, y);
+//    hNonMatch.Fill(x,y); // 
+//  }
+//  hNonMatch.GetXaxis()->SetTitle("#Delta_{1}");
+//  hNonMatch.GetYaxis()->SetTitle("#Delta_{2}");
+//  cout << "gBktsAlgSol: " << vNonMatchb1.size() <<  "\t" << hNonMatch.Integral(1, NbinX, 1, NbinY ) << endl;
+//  hNonMatch.SetStats(0);
+//  hNonMatch.SetLineColor(2); //red
+//  hNonMatch.SetMarkerSize(3);
+//  hNonMatch.SetMarkerStyle(7);
+//  hNonMatch.SetMarkerColor(2); //red
+//  legdel1del2.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, NbinX, 1, NbinY), hNonMatch.Integral(1, -1, 1, -1) ), "l");
+//  
+////
+//
+////
+//  TH2F hMatch("hMatch", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
+//  auto nPointsMatch = gMatch->GetN();
+//  for(int i=0; i < nPointsMatch; ++i) {
+//    double x,y;
+//    gMatch->GetPoint(i, x, y);
+//    hMatch.Fill(x,y); // 
+//  }
+//  hMatch.GetXaxis()->SetTitle("#Delta_{1}");
+//  hMatch.GetYaxis()->SetTitle("#Delta_{2}");
+//  cout << "gMatch: " << vMatchb1.size() <<  "\t" << hMatch.Integral(1, NbinX, 1, NbinY ) << endl;
+//  hMatch.SetStats(0);
+//  hMatch.SetLineColor(3); //green
+//  hMatch.SetMarkerSize(3);
+//  hMatch.SetMarkerStyle(7);
+//  hMatch.SetMarkerColor(3); //green
+//  legdel1del2.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, NbinX, 1, NbinY), hMatch.Integral(1, -1, 1, -1) ), "l");
+//
+//  htrueSol.SetMaximum(htrueSol.GetMaximum()*1.1);
+//  htrueSol.Draw("BOX");
+//  hNonMatch.Draw("BOX same");
+//  hMatch.Draw("BOX same");
+////
+//
+//  legdel1del2.Draw();
+//  c.Print(Form("del1del2_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+//
+//  hMatch.Draw("BOX");
+//  c.Print(Form("del1del2_match_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+
+  //Delta
+  hDeltaTop.GetXaxis()->SetTitle("#Delta_{top} (GeV)");
+  hDeltaTop.Write();
+  hDeltaTop.Draw();
+  c.Update();
+  c.Print(Form("deltop_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+  hDeltaTop1.GetXaxis()->SetTitle("#Delta_{top1} (GeV)");
+  hDeltaTop1.Write();
+  hDeltaTop1.Draw();
+  c.Update();
+  c.Print(Form("deltop1_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+  hDeltaTop2.GetXaxis()->SetTitle("#Delta_{top2} (GeV)");
+  hDeltaTop2.Write();
+  hDeltaTop2.Draw();
+  c.Update();
+  c.Print(Form("deltop2_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+  hDeltaW.GetXaxis()->SetTitle("#Delta_{W}");
+  hDeltaW.Write();
+  hDeltaW.Draw();
+  c.Update();
+  c.Print(Form("delW_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+  hDeltaW1.GetXaxis()->SetTitle("#Delta_{W1}");
+  hDeltaW1.Write();
+  hDeltaW1.Draw();
+  c.Update();
+  c.Print(Form("delW1_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+  hDeltaW2.GetXaxis()->SetTitle("#Delta_{W2}");
+  hDeltaW2.Write();
+  hDeltaW2.Draw();
+  c.Update();
+  c.Print(Form("delW2_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+ 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  int NbinX = 20; //15;
+  int NbinY = 20;  //50;
+  double Xmax = 10;
+  double Ymax = 20; 
+  auto legdelTdelW = TLegend( 0.65, 0.75, 0.88, 0.88);
+  legdelTdelW.SetFillColor(0);
+  legdelTdelW.SetLineColor(1);
 //
   TH2F htrueSol("htrueSol", "", NbinX, 0, Xmax, NbinY, 0, Ymax);
   auto nPointstrueSol = gtrueSol->GetN();
@@ -1014,15 +1176,15 @@ int main()
     gtrueSol->GetPoint(i, x, y);
     htrueSol.Fill(x,y); // 
   }
-  htrueSol.GetXaxis()->SetTitle("#Delta_{1}");
-  htrueSol.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gtrueSol: " << vtrueSolb1.size() <<  "\t" << htrueSol.Integral(1, NbinX, 1, NbinY ) << endl;
+  htrueSol.GetXaxis()->SetTitle("#Delta_{Top}");
+  htrueSol.GetYaxis()->SetTitle("#Delta_{W}");
+  cout << "gtrueSol: " << vtrueSolbtop.size() <<  "\t" << htrueSol.Integral(1, NbinX, 1, NbinY ) << endl;
   htrueSol.SetStats(0);
   htrueSol.SetLineColor(4); //blue
   htrueSol.SetMarkerSize(3);
   htrueSol.SetMarkerStyle(7);
   htrueSol.SetMarkerColor(4); //blue
-  legdel1del2.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, NbinX, 1, NbinY), htrueSol.Integral(1, -1, 1, -1) ), "l");
+  legdelTdelW.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, NbinX, 1, NbinY), htrueSol.Integral(1, -1, 1, -1) ), "l");
   
 //
 
@@ -1034,15 +1196,15 @@ int main()
     gNonMatch->GetPoint(i, x, y);
     hNonMatch.Fill(x,y); // 
   }
-  hNonMatch.GetXaxis()->SetTitle("#Delta_{1}");
-  hNonMatch.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gBktsAlgSol: " << vNonMatchb1.size() <<  "\t" << hNonMatch.Integral(1, NbinX, 1, NbinY ) << endl;
+  hNonMatch.GetXaxis()->SetTitle("#Delta_{Top}");
+  hNonMatch.GetYaxis()->SetTitle("#Delta_{W}");
+  cout << "gBktsAlgSol: " << vNonMatchbtop.size() <<  "\t" << hNonMatch.Integral(1, NbinX, 1, NbinY ) << endl;
   hNonMatch.SetStats(0);
   hNonMatch.SetLineColor(2); //red
   hNonMatch.SetMarkerSize(3);
   hNonMatch.SetMarkerStyle(7);
   hNonMatch.SetMarkerColor(2); //red
-  legdel1del2.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, NbinX, 1, NbinY), hNonMatch.Integral(1, -1, 1, -1) ), "l");
+  legdelTdelW.AddEntry(&hNonMatch, Form("incorrect solution: %.f (total: %.f)", hNonMatch.Integral(1, NbinX, 1, NbinY), hNonMatch.Integral(1, -1, 1, -1) ), "l");
   
 //
 
@@ -1054,15 +1216,15 @@ int main()
     gMatch->GetPoint(i, x, y);
     hMatch.Fill(x,y); // 
   }
-  hMatch.GetXaxis()->SetTitle("#Delta_{1}");
-  hMatch.GetYaxis()->SetTitle("#Delta_{2}");
-  cout << "gMatch: " << vMatchb1.size() <<  "\t" << hMatch.Integral(1, NbinX, 1, NbinY ) << endl;
+  hMatch.GetXaxis()->SetTitle("#Delta_{Top}");
+  hMatch.GetYaxis()->SetTitle("#Delta_{W}");
+  cout << "gMatch: " << vMatchbtop.size() <<  "\t" << hMatch.Integral(1, NbinX, 1, NbinY ) << endl;
   hMatch.SetStats(0);
   hMatch.SetLineColor(3); //green
   hMatch.SetMarkerSize(3);
   hMatch.SetMarkerStyle(7);
   hMatch.SetMarkerColor(3); //green
-  legdel1del2.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, NbinX, 1, NbinY), hMatch.Integral(1, -1, 1, -1) ), "l");
+  legdelTdelW.AddEntry(&hMatch, Form("correct solution: %.f (total: %.f)", hMatch.Integral(1, NbinX, 1, NbinY), hMatch.Integral(1, -1, 1, -1) ), "l");
 
   htrueSol.SetMaximum(htrueSol.GetMaximum()*1.1);
   htrueSol.Draw("BOX");
@@ -1070,12 +1232,14 @@ int main()
   hMatch.Draw("BOX same");
 //
 
-  legdel1del2.Draw();
-  c.Print(Form("del1del2_smearwidth_%.1f_.eps", smearwidth));
+  legdelTdelW.Draw();
+  //c.Print(Form("del1del2_smearwidth_%.1f_.eps", smearwidth));
+  c.Print(Form("delTdelW_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
   hMatch.Draw("BOX");
-  c.Print(Form("del1del2_match_smearwidth_%.1f_.eps", smearwidth));
+  //c.Print(Form("del1del2_match_smearwidth_%.1f_.eps", smearwidth));
+  c.Print(Form("delTdelW_match_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
 
   f.Close();
