@@ -313,6 +313,22 @@ int bucketmatcher(vector<string> lines, TLorentzVector b, vector <TLorentzVector
 }
 
 
+void drawoverunderflows(TH1* h)
+{
+   int nbinx = h->GetNbinsX()+2;
+   double x1 = h->GetBinLowEdge(0);
+   double binwidth = h->GetBinWidth(nbinx-1); //getting the bin width of the overflow bin
+   double x2 = h->GetBinLowEdge(nbinx-1)+binwidth;
+   TH1F* huo = new TH1F(h->GetName(), h->GetTitle(), nbinx, x1, x2);
+   for (int i=0; i<nbinx; i++)
+   {
+      huo->SetBinContent(i+1, h->GetBinContent(i));
+   }
+   huo->GetXaxis()->SetTitle(h->GetXaxis()->GetTitle());
+   huo->Draw();
+}
+
+
 
 int main()
 {
@@ -338,9 +354,9 @@ int main()
   
   //smearing width
   float smearwidth;
-  //smearwidth = 0.8;//
+  smearwidth = 0.8;//
   //smearwidth = 1.0;//
-  smearwidth = 1.2;//
+  //smearwidth = 1.2;//
   //mass
   TH1F htwt0mass("htwt0mass", "Mass of tw and t0 Buckets superposed",150,0.0001,300); 
   TH1F htwmass("htwmass", "Mass of tw Buckets",150,0.0001,300); 
@@ -401,12 +417,12 @@ int main()
 
 
   //delta plots
-  TH1F hDeltaTop("hDeltaTop", "#Delta_{top}", 50, -50, 50);
-  TH1F hDeltaTop1("hDeltaTop1", "#Delta_{top1}", 50, -50, 50);
-  TH1F hDeltaTop2("hDeltaTop2", "#Delta_{top2}", 50, -50, 50);
-  TH1F hDeltaW("hDeltaW", "#Delta_{W}", 30, -0.3, 0.3);
-  TH1F hDeltaW1("hDeltaW1", "#Delta_{W1}", 30, -0.3, 0.3);
-  TH1F hDeltaW2("hDeltaW2", "#Delta_{W2}", 30, -0.3, 0.3);
+  TH1F* hDeltaTop = new TH1F("hDeltaTop", "#Delta_{top}", 50, -50, 50);
+  TH1F* hDeltaTop1 = new TH1F("hDeltaTop1", "#Delta_{top1}", 50, -50, 50);
+  TH1F* hDeltaTop2 = new TH1F("hDeltaTop2", "#Delta_{top2}", 50, -50, 50);
+  TH1F* hDeltaW = new TH1F("hDeltaW", "#Delta_{W}", 30, -0.3, 0.3);
+  TH1F* hDeltaW1 = new TH1F("hDeltaW1", "#Delta_{W1}", 30, -0.3, 0.3);
+  TH1F* hDeltaW2 = new TH1F("hDeltaW2", "#Delta_{W2}", 30, -0.3, 0.3);
   //TH1F hDeltaTop1("hDeltaTop1", "#Delta_{top1}", 40, -10, 10);
   //TH1F hDeltaTop2("hDeltaTop2", "#Delta_{top2}", 40, -10, 10);
   //TH1F hDeltaW1("hDeltaW1", "#Delta_{W1}", 40, -10, 10);
@@ -450,9 +466,9 @@ int main()
     {
       event_flag = true;
       //if (eventcounter == 10000) {break;}
-      //if (eventcounter == 1000) {break;}
+      if (eventcounter == 1000) {break;}
       //if (eventcounter == 92) {break;}
-      //if (eventcounter == 10) {break;}
+      //if (eventcounter == 100) {break;}
       if (eventcounter%500 == 0) cout << "event: " << eventcounter << endl;
       eventcounter++; 
       //cout << line << "\t" << event_flag << endl;
@@ -487,6 +503,7 @@ int main()
 	  ////cout << "b1 >>" << endl;
           int b1truthmatchFlag = bucketmatcher(lines, preb1bjet, preb1nonbjets, topDict);
           double dw = allprebpairs.delw[it->first];
+	  //cout << "dw: " << dw << "\tdt: " << dtop << endl;
 	  //twOptMetric();
 	  ////cout << "b2 >>" << endl;
 	  TLorentzVector preb2bjet = preblist[1].BJET;
@@ -498,16 +515,16 @@ int main()
           if ( ((b1truthmatchFlag==0) && (b2truthmatchFlag==0)) )
           {
 	    //cout << "index at truth: " << it->first << endl;
-	    hDeltaTop1.Fill(preblist[0].dT);
+	    hDeltaTop1->Fill(preblist[0].dT);
 	    //preblist[0].twflag();
-            hDeltaW1.Fill(preblist[0].dW);
-	    hDeltaTop2.Fill(preblist[1].dT);
+            hDeltaW1->Fill(preblist[0].dW);
+	    hDeltaTop2->Fill(preblist[1].dT);
 	    //preblist[1].twflag();
-            hDeltaW2.Fill(preblist[1].dW);
-	    hDeltaTop.Fill(preblist[0].dT);
-	    hDeltaTop.Fill(preblist[1].dT);
-            hDeltaW.Fill(preblist[0].dW);
-            hDeltaW.Fill(preblist[1].dW);
+            hDeltaW2->Fill(preblist[1].dW);
+	    hDeltaTop->Fill(preblist[0].dT);
+	    hDeltaTop->Fill(preblist[1].dT);
+            hDeltaW->Fill(preblist[0].dW);
+            hDeltaW->Fill(preblist[1].dW);
             vtrueSolbtop.push_back(pow(dtop, 0.5));
             vtrueSolbw.push_back(pow(dw, 0.5));
 	    if (b2truthmatchFlag==0) {hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());}
@@ -1123,48 +1140,82 @@ int main()
 //  c.Clear();
 
   //Delta
-  hDeltaTop.GetXaxis()->SetTitle("#Delta_{top} (GeV)");
-  hDeltaTop.Write();
-  hDeltaTop.Draw();
+  hDeltaTop->GetXaxis()->SetTitle("#Delta_{top} (GeV)");
+  hDeltaTop->Write();
+  hDeltaTop->Draw();
   c.Update();
   c.Print(Form("deltop_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
-  hDeltaTop1.GetXaxis()->SetTitle("#Delta_{top1} (GeV)");
-  hDeltaTop1.Write();
-  hDeltaTop1.Draw();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaTop);
+  c.Update();
+  c.Print(Form("deltop_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
+  hDeltaTop1->GetXaxis()->SetTitle("#Delta_{top1} (GeV)");
+  hDeltaTop1->Write();
+  hDeltaTop1->Draw();
   c.Update();
   c.Print(Form("deltop1_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
-  hDeltaTop2.GetXaxis()->SetTitle("#Delta_{top2} (GeV)");
-  hDeltaTop2.Write();
-  hDeltaTop2.Draw();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaTop1);
+  c.Update();
+  c.Print(Form("deltop1_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
+  hDeltaTop2->GetXaxis()->SetTitle("#Delta_{top2} (GeV)");
+  hDeltaTop2->Write();
+  hDeltaTop2->Draw();
   c.Update();
   c.Print(Form("deltop2_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
-  hDeltaW.GetXaxis()->SetTitle("#Delta_{W}");
-  hDeltaW.Write();
-  hDeltaW.Draw();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaTop2);
+  c.Update();
+  c.Print(Form("deltop2_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
+  hDeltaW->GetXaxis()->SetTitle("#Delta_{W}");
+  hDeltaW->Write();
+  hDeltaW->Draw();
   c.Update();
   c.Print(Form("delW_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
-  hDeltaW1.GetXaxis()->SetTitle("#Delta_{W1}");
-  hDeltaW1.Write();
-  hDeltaW1.Draw();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaW);
+  c.Update();
+  c.Print(Form("delW_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
+  hDeltaW1->GetXaxis()->SetTitle("#Delta_{W1}");
+  hDeltaW1->Write();
+  hDeltaW1->Draw();
   c.Update();
   c.Print(Form("delW1_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
-  hDeltaW2.GetXaxis()->SetTitle("#Delta_{W2}");
-  hDeltaW2.Write();
-  hDeltaW2.Draw();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaW1);
+  c.Update();
+  c.Print(Form("delW1_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
+  hDeltaW2->GetXaxis()->SetTitle("#Delta_{W2}");
+  hDeltaW2->Write();
+  hDeltaW2->Draw();
   c.Update();
   c.Print(Form("delW2_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
+  //adding underflow overflow bins to the plot
+  drawoverunderflows(hDeltaW2);
+  c.Update();
+  c.Print(Form("delW2_smearwidth_%.1f_UO.eps", smearwidth));
+  c.Clear();
  
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  int NbinX = 20; //15;
-  int NbinY = 20;  //50;
-  double Xmax = 10;
-  double Ymax = 20; 
+  int NbinX = 10; //15;
+  int NbinY = 10;  //50;
+  double Xmax = 5;
+  double Ymax = 10; 
+  //int NbinX = 20; //15;
+  //int NbinY = 20;  //50;
+  //double Xmax = 10;
+  //double Ymax = 20; 
   auto legdelTdelW = TLegend( 0.65, 0.75, 0.88, 0.88);
   legdelTdelW.SetFillColor(0);
   legdelTdelW.SetLineColor(1);
@@ -1181,9 +1232,10 @@ int main()
   cout << "gtrueSol: " << vtrueSolbtop.size() <<  "\t" << htrueSol.Integral(1, NbinX, 1, NbinY ) << endl;
   htrueSol.SetStats(0);
   htrueSol.SetLineColor(4); //blue
+  htrueSol.SetLineStyle(1);
   htrueSol.SetMarkerSize(3);
   htrueSol.SetMarkerStyle(7);
-  htrueSol.SetMarkerColor(4); //blue
+  htrueSol.SetMarkerColor(4);  //blue
   legdelTdelW.AddEntry(&htrueSol, Form("truth: %.f (total: %.f)", htrueSol.Integral(1, NbinX, 1, NbinY), htrueSol.Integral(1, -1, 1, -1) ), "l");
   
 //
@@ -1201,6 +1253,7 @@ int main()
   cout << "gBktsAlgSol: " << vNonMatchbtop.size() <<  "\t" << hNonMatch.Integral(1, NbinX, 1, NbinY ) << endl;
   hNonMatch.SetStats(0);
   hNonMatch.SetLineColor(2); //red
+  hNonMatch.SetLineStyle(1);
   hNonMatch.SetMarkerSize(3);
   hNonMatch.SetMarkerStyle(7);
   hNonMatch.SetMarkerColor(2); //red
