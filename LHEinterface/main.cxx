@@ -13,7 +13,7 @@
 #include "TH2.h"
 #include "TGraph.h"
 #include "TMultiGraph.h"
-#include "math.h"
+//#include "math.h"
 #include "TLorentzVector.h"
 #include "TLine.h"
 #include "TRandom.h"
@@ -22,7 +22,7 @@
 #include "TStyle.h"
 #include <map>
 #include "TLegend.h"
-
+#include "TMath.h"
 
 using namespace std;
 
@@ -312,11 +312,19 @@ int bucketmatcher(vector<string> lines, TLorentzVector b, vector <TLorentzVector
   return match;
 }
 
+double mtw(double px1, double py1, double px2, double py2)
+{
+  double pt1 = sqrt(px1*px1 + py1*py1);
+  double pt2 = sqrt(px2*px2 + py2*py2);
+  return sqrt(2*(pt1*pt2 - ((px1*px2) + (py1*py2)) ) );
+}
+
 
 
 int main()
 {
-  gStyle->SetOptStat("irmen");
+  gStyle->SetOptStat("sirmen");
+  TH1::StatOverflows(true);// also count under-/overflow for stats box
 		  //001001111);
   //ifstream inFile("../tt_had_test_one.lhe");
   //ifstream inFile("../tt_had_test.lhe");
@@ -413,7 +421,13 @@ int main()
   TH1F* hDeltaTop2 = new TH1F("hDeltaTop2", "#Delta_{top2}", 40, -10, 10);
   TH1F* hDeltaW    = new TH1F("hDeltaW", "#Delta_{W}", 40, -10, 10);
   TH1F* hDeltaW1   = new TH1F("hDeltaW1", "#Delta_{W1}", 40, -10, 10);
-  TH1F* hDeltaW2   = new TH1F("hDeltaW2", "#Delta_{W2}", 40, -10, 10);
+  TH1F* hDeltaW2   = new TH1F("hDeltaW2", "#Delta_{W2}", 50, 0, 2);
+  TH1F* hMTW          = new TH1F("m_{T}W", "", 400, 0, 200);
+  //TH1F* hMTWval       = new TH1F("m_{T}W validation", "", 400, 0, 200);
+  //TH1F* hMTW1_1       = new TH1F("m_{T}^{1.1}W", "", 400, 0, pow(200,1.1));
+  //TH1F* hMTW1_2       = new TH1F("m_{T}^{1.2}W", "", 400, 0, pow(200,1.2));
+  //TH1F* hMTW2         = new TH1F("m_{T}^{2}W", "", 400, 0, pow(200,2));
+  //TH1F* hexpMTW       = new TH1F("exp(m_{T}W)", "", 400, 1, 2000);
 
 
   //for all bucket pairs scatter plot
@@ -453,10 +467,12 @@ int main()
     if (line.find("<event>") != string::npos) 
     {
       event_flag = true;
+      //if (eventcounter == 10000) {break;}
+      //if (eventcounter == 5) {break;}
       if (eventcounter == 1000) {break;}
       //if (eventcounter == 92) {break;}
       //if (eventcounter == 2) {break;}
-      cout << "event: " << eventcounter << endl;
+      if (eventcounter%500 == 0) {cout << "event: " << eventcounter << endl;}
       eventcounter++; 
       //cout << line << "\t" << event_flag << endl;
     }
@@ -472,16 +488,26 @@ int main()
           hMVal.Fill(t.second.validateMass());
         }
         
+//	double plx = 0;
+//	double ply = 0;
 	for (int i=0; i < (specnonbjets.size()-1) ; i++)    //drop the last quark to mimic neutrino
 	{
 	  if (i == (specnonbjets.size()-2)) {
 	      specnonbjetssub.push_back(specnontruthbjets[i]);   //removed smearing for the incomplete W nonbjet to mimic lepton
+//	      plx = specnontruthbjets[i].Px();
+//	      ply = specnontruthbjets[i].Py();
 	  }
 	  else {
 	      specnonbjetssub.push_back(specnonbjets[i]);
 	  }
 	}
-        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjetssub);
+        double METx = specnonbjets[specnonbjets.size()-1].Px();
+        double METy = specnonbjets[specnonbjets.size()-1].Py();
+	//cout << "actual: lpx: " << plx << "\tlpy: " << ply << "\tMETx: " << METx << "\tMETy: " << METy << "\tMTW: " << mtw(plx, ply, METx, METy) <<endl;
+//        hMTWval->Fill(mtw(plx, ply, METx, METy));
+
+
+        BucketofTops *m_buckets = new BucketofTops(specbjets, specnonbjetssub, METx, METy);
         std::vector<bucketAlgo::bucket>& bucklist = *m_buckets->returnbucketlistptr();
         std::vector<float> m_mBucketPrim = m_buckets->mBucketPrim;
 
@@ -514,8 +540,30 @@ int main()
 	    //cout << "index at truth: " << it->first << endl;
             vtrueSolbw.push_back(pow(dw, 0.5));
             vtrueSolbtop.push_back(pow(dtop, 0.5));
-	    if (b2truthmatchFlag==2) {hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());}
-	    else {hmBucketB2Correctsubset.Fill(preblist[0].getBucketMass());}
+	    if (b2truthmatchFlag==2) 
+	    {
+	       //cout << "after bucketing: lpx: " << preb2nonbjets[0].Px() << "\tlpy: " << preb2nonbjets[0].Py() << "\tMETx: " << METx << "\tMETy: " << METy << "\tMTW: " << preblist[1].MTW << "\tsize: " << preb2nonbjets.size() << endl;
+	       hmBucketB2Correctsubset.Fill(preblist[1].getBucketMass());
+	       hDeltaW2->Fill(preblist[1].dWLep);
+	       hMTW->Fill(preblist[1].MTW);
+               hDeltaW1->Fill(preblist[0].dW);
+//	       hMTW1_1->Fill(pow(preblist[1].MTW,1.1));
+//               hMTW1_2->Fill(pow(preblist[1].MTW,1.2));
+//	       hMTW2->Fill(pow(preblist[1].MTW,2));
+//	       hexpMTW->Fill(exp(preblist[1].MTW));
+	    }
+	    else 
+	    {
+	       //cout << ">>after bucketing: lpx: " << preb1nonbjets[0].Px() << "\tlpy: " << preb1nonbjets[0].Py() << "\tMETx: " << METx << "\tMETy: " << METy << "\tMTW: " << preblist[0].MTW << endl;
+	       hmBucketB2Correctsubset.Fill(preblist[0].getBucketMass());
+	       hDeltaW2->Fill(preblist[0].dWLep);
+	       hMTW->Fill(preblist[0].MTW);
+               hDeltaW1->Fill(preblist[1].dW);
+//               hMTW1_1->Fill(pow(preblist[0].MTW,1.1)); 
+//               hMTW1_2->Fill(pow(preblist[0].MTW,1.2)); 
+//	       hMTW2->Fill(pow(preblist[0].MTW,2)); 
+//	       hexpMTW->Fill(exp(preblist[0].MTW));
+	    }
           }
 
           if (it->first == AlgSol)
@@ -1179,6 +1227,54 @@ int main()
   c.Update();
   c.Print(Form("delW2_smearwidth_%.1f_.eps", smearwidth));
   c.Clear();
+//  //gStyle->SetOptStat("010001111");
+//  hMTWval->GetXaxis()->SetTitle("m_{T}W (GeV)");
+//  const int nq1val = 1;
+//  double xq1val[nq1val], yq1val[nq1val];
+//  xq1val[0] = 0.5;
+//  hMTWval->GetQuantiles(nq1val, yq1val, xq1val); 
+//  hMTWval->SetTitle(Form("median mass %.2f GeV", yq1val[0]));
+//  hMTWval->Write();
+//  hMTWval->Draw();
+//  c.Update();
+//  c.Print(Form("MTWval_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+  hMTW->GetXaxis()->SetTitle("m_{T}W (GeV)");
+  const int nq1 = 1;
+  double xq1[nq1], yq1[nq1];
+  xq1[0] = 0.5;
+  hMTW->GetQuantiles(nq1, yq1, xq1); 
+  hMTW->SetTitle(Form("median mass %.2f GeV", yq1[0]));
+  hMTW->Write();
+  hMTW->Draw();
+  c.Update();
+  c.Print(Form("MTW_smearwidth_%.1f_.eps", smearwidth));
+  c.Clear();
+//  hMTW1_1->GetXaxis()->SetTitle("m_{T}^{1.1}W (GeV)");
+//  hMTW1_1->Write();
+//  hMTW1_1->Draw();
+//  c.Update();
+//  c.Print(Form("MTW1_1_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+//  hMTW1_2->GetXaxis()->SetTitle("m_{T}^{1.2}W (GeV)");
+//  hMTW1_2->Write();
+//  hMTW1_2->Draw();
+//  c.Update();
+//  c.Print(Form("MTW1_2_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+//  hMTW2->GetXaxis()->SetTitle("m_{T}^{2}W (GeV)");
+//  hMTW2->Write();
+//  hMTW2->Draw();
+//  c.Update();
+//  c.Print(Form("MTW2_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+//  hexpMTW->GetXaxis()->SetTitle("exp(m_{T}W) (GeV)");
+//  hexpMTW->Write();
+//  hexpMTW->Draw();
+//  c.Update();
+//  c.Print(Form("expMTW_smearwidth_%.1f_.eps", smearwidth));
+//  c.Clear();
+  //gStyle->SetOptStat("000001111");
   //adding underflow overflow bins to the plot
   //drawoverunderflows(hDeltaW2);
   //c.Update();
@@ -1271,7 +1367,7 @@ int main()
   hMatch.Draw("BOX");
   //c.Print(Form("del1del2_match_smearwidth_%.1f_.eps", smearwidth));
   c.Print(Form("delTdelW_match_smearwidth_%.1f_.eps", smearwidth));
-c.Clear();
+  c.Clear();
   f.Close();
 
   inFile.close();
